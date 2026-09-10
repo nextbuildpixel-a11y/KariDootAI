@@ -1,0 +1,258 @@
+/* KariDoot AI · Craft-Tech Studio — Global CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   FONTS (loaded via HTML link tag)
+   ============================================================ */
+
+/* ============================================================
+   BASE
+   ============================================================ */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-obsidian font-sans text-white;
+    background-image: radial-gradient(ellipse at 50% 0%, #1E293B 0%, #0B0F17 65%);
+    min-height: 100dvh;
+    overscroll-behavior: none;
+  }
+  h1, h2, h3 { @apply font-serif; }
+}
+
+/* ============================================================
+   COMPONENT PRIMITIVES
+   ============================================================ */
+@layer components {
+
+  /* ── Glass Cards ── */
+  .glass-card {
+    @apply rounded-2xl border border-white/10 backdrop-blur-xl;
+    background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    box-shadow: 0 1px 0 rgba(255,255,255,0.05) inset, 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .glass-card-light {
+    @apply rounded-2xl border border-zinc-200/60 backdrop-blur-xl bg-white/80;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+
+  /* ── Saffron Primary Button ── */
+  .btn-saffron {
+    @apply relative overflow-hidden font-semibold px-6 py-3 rounded-xl
+           text-obsidian transition-all duration-200 select-none
+           hover:scale-[1.02] active:scale-[0.98];
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    box-shadow: 0 0 20px #F59E0B33, 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .btn-saffron::before {
+    content: '';
+    @apply absolute inset-0 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-200;
+    background: linear-gradient(135deg, #FCD34D, #F59E0B);
+  }
+  .btn-saffron > * { @apply relative z-10; }
+
+  /* ── Emerald Button ── */
+  .btn-emerald {
+    @apply relative overflow-hidden font-semibold px-6 py-3 rounded-xl
+           text-white transition-all duration-200 select-none
+           hover:scale-[1.02] active:scale-[0.98];
+    background: linear-gradient(135deg, #10B981, #059669);
+    box-shadow: 0 0 20px #10B98133, 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* ── Ghost Glass Button ── */
+  .btn-ghost-dark {
+    @apply font-semibold px-6 py-3 rounded-xl border border-white/10
+           text-white/80 backdrop-blur-sm
+           transition-all duration-200 select-none
+           hover:bg-white/5 hover:border-white/20 active:scale-[0.98];
+  }
+
+  /* ── Input Dark ── */
+  .input-dark {
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3
+           font-sans text-white placeholder-white/30
+           focus:outline-none focus:ring-2 focus:ring-saffron focus:border-saffron/60
+           transition-all duration-200 backdrop-blur-sm;
+  }
+
+  /* ── Step Label ── */
+  .step-badge {
+    @apply inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest
+           px-3 py-1 rounded-full border;
+  }
+  .step-badge-active {
+    @apply step-badge bg-saffron/10 border-saffron/40 text-saffron;
+  }
+  .step-badge-done {
+    @apply step-badge bg-emerald-craft/10 border-emerald-craft/40 text-emerald-craft;
+  }
+
+  /* ── Spec Tag ── */
+  .spec-chip {
+    @apply flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2.5
+           text-xs font-medium text-white/80 backdrop-blur-sm;
+    background: linear-gradient(145deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  }
+
+  /* ── Soundwave bar ── */
+  .wave-bar {
+    @apply rounded-full origin-center;
+    background: linear-gradient(to top, #F59E0B, #10B981);
+    animation: waveform 0.8s ease-in-out infinite alternate;
+  }
+  .wave-bar:nth-child(even) { animation-direction: alternate-reverse; }
+
+  /* ── Market Ticker ── */
+  .ticker-wrap {
+    @apply overflow-hidden relative;
+  }
+  .ticker-track {
+    @apply flex items-center gap-8 whitespace-nowrap;
+    animation: ticker 22s linear infinite;
+  }
+
+  /* ── Scan Beam ── */
+  .scan-beam {
+    @apply absolute left-0 right-0 h-0.5 z-20 pointer-events-none;
+    background: linear-gradient(90deg, transparent, #F59E0B, #10B981, transparent);
+    box-shadow: 0 0 12px #F59E0B, 0 0 24px #10B98166;
+    animation: scan-beam 1.6s cubic-bezier(0.4,0,0.2,1) forwards;
+  }
+
+  /* ── Viewfinder Bracket ── */
+  .vf-bracket {
+    @apply absolute w-7 h-7 z-10;
+    border-color: #F59E0B;
+  }
+  .vf-tl { @apply top-3 left-3 border-t-2 border-l-2 rounded-tl-md; }
+  .vf-tr { @apply top-3 right-3 border-t-2 border-r-2 rounded-tr-md; }
+  .vf-bl { @apply bottom-3 left-3 border-b-2 border-l-2 rounded-bl-md; }
+  .vf-br { @apply bottom-3 right-3 border-b-2 border-r-2 rounded-br-md; }
+
+  /* ── Number Display ── */
+  .price-mono {
+    @apply font-mono tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Shimmer skeleton ── */
+  .shimmer-dark {
+    background: linear-gradient(90deg, #1E293B 25%, #243045 50%, #1E293B 75%);
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  /* ── Range Slider custom ── */
+  input[type="range"].arc-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 999px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(to right, #F59E0B var(--pct, 40%), rgba(255,255,255,0.1) var(--pct, 40%));
+  }
+  input[type="range"].arc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 12px #F59E0B66, 0 4px 8px rgba(0,0,0,0.4);
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  input[type="range"].arc-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+    box-shadow: 0 0 24px #F59E0B88, 0 4px 12px rgba(0,0,0,0.5);
+  }
+  input[type="range"].arc-slider::-moz-range-thumb {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #F59E0B, #D97706);
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 12px #F59E0B66;
+    cursor: pointer;
+  }
+}
+
+/* ============================================================
+   UTILITY LAYER
+   ============================================================ */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .backdrop-craft {
+    backdrop-filter: blur(16px) saturate(160%);
+    background: rgba(11, 15, 23, 0.75);
+  }
+
+  .text-gradient-saffron {
+    background: linear-gradient(135deg, #FCD34D, #F59E0B, #D97706);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .text-gradient-emerald {
+    background: linear-gradient(135deg, #34D399, #10B981);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .border-gradient {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* Tilt card 3D */
+  .tilt-card {
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease-out;
+  }
+
+  /* Divider */
+  .divider-dark {
+    @apply h-px w-full;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  }
+}
+
+/* ============================================================
+   PRINT
+   ============================================================ */
+@media print {
+  body { background: white !important; color: #000 !important; }
+  .no-print { display: none !important; }
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: #0B0F17; }
+::-webkit-scrollbar-thumb { background: #F59E0B44; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #F59E0B88; }
+
+/* ============================================================
+   CANVAS EQUALIZER BARS
+   ============================================================ */
+.eq-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #F59E0B, #10B981);
+  min-height: 4px;
+  transition: height 0.05s ease;
+}
