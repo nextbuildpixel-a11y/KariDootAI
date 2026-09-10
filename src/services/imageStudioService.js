@@ -399,11 +399,11 @@ export async function runStudioPipeline({
   onStageChange?.({
     stage: 1,
     label: 'Visual Craft Analysis...',
-    detail: 'Analyzing craft texture, materials, and form via Gemini Vision...',
+    detail: 'Analyzing craft texture, materials, and form via AI Vision...',
     progress: 25,
   });
 
-  // 1. Visual analysis via Gemini Flash Vision
+  // 1. Visual analysis via AI Flash Vision
   let visualAnalysis = null;
   try {
     visualAnalysis = await analyzeCraftVisuals(rawPhotoDataUrl, rawFile?.type || 'image/jpeg');
@@ -422,7 +422,7 @@ export async function runStudioPipeline({
 
   let masterUrl = null;
   let cutoutUrl = rawPhotoDataUrl;
-  let stagingEngine = 'Gemini Vision + Studio Compositor';
+  let stagingEngine = 'AI Vision + Studio Compositor';
 
   // Try Imagen 3 Generative Staging if visual analysis succeeded
   if (visualAnalysis) {
@@ -430,7 +430,7 @@ export async function runStudioPipeline({
       const generated = await generateImagenStagedPhoto(visualAnalysis, activePreset);
       if (generated) {
         masterUrl = generated;
-        stagingEngine = 'Google Imagen 3 Commercial Studio';
+        stagingEngine = 'Commercial AI Lifestyle Studio';
       }
     } catch {
       // Continue to smart failsafe fallback

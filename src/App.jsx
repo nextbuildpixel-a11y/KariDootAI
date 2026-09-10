@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import Navbar from './components/Navbar';
 import VoiceCopilot from './components/VoiceCopilot';
+import AIAssistant from './components/AIAssistant';
 import PhotoStudio from './components/PhotoStudio';
 import VoiceCatalog from './components/VoiceCatalog';
 import WinWinPricing from './components/WinWinPricing';
@@ -24,6 +25,78 @@ export default function App() {
   const goTo = (s) => {
     // Allow navigation to any step ≤ maxStep (already visited)
     if (s >= 1 && s <= 5 && s <= maxStep) setStep(s);
+  };
+
+  // Agentic Action Handlers for AI Sahayak
+  const jumpToStep = (s) => {
+    const target = Math.max(1, Math.min(5, Number(s)));
+    setStep(target);
+    setMaxStep((m) => Math.max(m, target));
+  };
+
+  const updatePricingCost = (field, amount) => {
+    const validField = field.toLowerCase().trim();
+    const val = Number(amount);
+    if (isNaN(val)) return false;
+
+    setPricingData((prev) => {
+      const currentCosts = prev?.costBreakdown || {
+        material: Number(catalogData?.cost_breakdown?.material_cost) || 120,
+        labour: Number(catalogData?.cost_breakdown?.labour_cost) || 180,
+        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || 40,
+        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || 80,
+      };
+      const updatedCosts = { ...currentCosts, [validField]: val };
+      const currentMargin = prev?.marginPercent ?? 50;
+      const baseCost = Object.values(updatedCosts).reduce((a, b) => a + (Number(b) || 0), 0);
+      const sellingPrice = Math.round(baseCost * (1 + currentMargin / 100));
+      const profit = sellingPrice - baseCost;
+      const marketPrice = prev?.marketPrice || Math.round(baseCost * 1.95);
+      return {
+        ...prev,
+        costBreakdown: updatedCosts,
+        marginPercent: currentMargin,
+        baseCost,
+        sellingPrice,
+        profit,
+        marketPrice,
+        customerSavings: Math.max(0, marketPrice - sellingPrice),
+      };
+    });
+    return true;
+  };
+
+  const updateMargin = (pct) => {
+    const val = Math.max(10, Math.min(150, Number(pct)));
+    if (isNaN(val)) return false;
+
+    setPricingData((prev) => {
+      const currentCosts = prev?.costBreakdown || {
+        material: Number(catalogData?.cost_breakdown?.material_cost) || 120,
+        labour: Number(catalogData?.cost_breakdown?.labour_cost) || 180,
+        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || 40,
+        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || 80,
+      };
+      const baseCost = Object.values(currentCosts).reduce((a, b) => a + (Number(b) || 0), 0);
+      const sellingPrice = Math.round(baseCost * (1 + val / 100));
+      const profit = sellingPrice - baseCost;
+      const marketPrice = prev?.marketPrice || Math.round(baseCost * 1.95);
+      return {
+        ...prev,
+        costBreakdown: currentCosts,
+        marginPercent: val,
+        baseCost,
+        sellingPrice,
+        profit,
+        marketPrice,
+        customerSavings: Math.max(0, marketPrice - sellingPrice),
+      };
+    });
+    return true;
+  };
+
+  const triggerRegenerateCatalog = () => {
+    jumpToStep(2);
   };
 
   const nextStep = () => {
@@ -149,6 +222,18 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* ── Agentic AI Sahayak / Assistant (Floating across all steps) ── */}
+      <AIAssistant
+        currentStep={step}
+        dialect={dialect}
+        pricingData={pricingData}
+        catalogData={catalogData}
+        onNavigateStep={jumpToStep}
+        onUpdateCost={updatePricingCost}
+        onSetMargin={updateMargin}
+        onRegenerateCatalog={triggerRegenerateCatalog}
+      />
 
       {/* ── Bottom Navigation Bar (shown on all steps) ── */}
       <div

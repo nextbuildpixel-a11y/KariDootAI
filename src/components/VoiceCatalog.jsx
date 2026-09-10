@@ -231,7 +231,7 @@ export default function VoiceCatalog({ photo, dialect, catalogData, onCatalogRea
             Acoustic <span className="text-gradient-saffron">Craft Analysis</span>
           </h2>
           <p className="text-white/45 text-sm">
-            Voice-narrate or type your craft's story · Gemini AI performs real-time heritage copywriting &amp; pricing extraction
+            Voice-narrate or type your craft's story · KariDoot AI performs real-time heritage copywriting &amp; pricing extraction
           </p>
         </div>
 
@@ -377,7 +377,7 @@ export default function VoiceCatalog({ photo, dialect, catalogData, onCatalogRea
           {isAnalyzing ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>Gemini AI Copywriting in progress...</span>
+              <span>AI Copywriting in progress...</span>
             </>
           ) : (
             <>
@@ -412,7 +412,7 @@ export default function VoiceCatalog({ photo, dialect, catalogData, onCatalogRea
               Artisan Raw Notes · Dynamic Refinement
             </span>
             <span className="text-[10px] font-mono text-emerald-craft">
-              Gemini 3.6/3.5 Active
+              AI Neural Engine Active
             </span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -713,7 +713,7 @@ export default function VoiceCatalog({ photo, dialect, catalogData, onCatalogRea
             className="btn-ghost-dark flex items-center justify-center gap-2 py-3 text-sm"
           >
             <RefreshCw size={15} className={isAnalyzing ? 'animate-spin' : ''} />
-            <span>Re-analyze with Gemini</span>
+            <span>Re-analyze with AI</span>
           </button>
           <button
             onClick={onNext}

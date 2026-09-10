@@ -59,6 +59,32 @@ export default function WinWinPricing({ catalogData, pricingData, onPricingReady
     }
   }, [catalogData?.cost_breakdown, pricingData]);
 
+  // Synchronize with external updates (e.g., AI Sahayak Agentic commands)
+  useEffect(() => {
+    if (pricingData?.costBreakdown) {
+      setCosts((prev) => {
+        const next = pricingData.costBreakdown;
+        if (
+          prev.material === next.material &&
+          prev.labour === next.labour &&
+          prev.packaging === next.packaging &&
+          prev.logistics === next.logistics
+        ) {
+          return prev;
+        }
+        return {
+          material: next.material ?? prev.material,
+          labour: next.labour ?? prev.labour,
+          packaging: next.packaging ?? prev.packaging,
+          logistics: next.logistics ?? prev.logistics,
+        };
+      });
+    }
+    if (pricingData?.marginPercent !== undefined) {
+      setMargin((prev) => (prev === pricingData.marginPercent ? prev : pricingData.marginPercent));
+    }
+  }, [pricingData]);
+
   // Dynamic calculations on every keystroke
   const baseCost = (costs.material || 0) + (costs.labour || 0) + (costs.packaging || 0) + (costs.logistics || 0);
   const finalPrice = Math.round(baseCost * (1 + margin / 100));

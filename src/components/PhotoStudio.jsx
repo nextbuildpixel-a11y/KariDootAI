@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Palette,
+  Scissors,
 } from 'lucide-react';
 import {
   STUDIO_PRESETS,
@@ -45,6 +46,11 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
   const [presetCache, setPresetCache] = useState({});
   const [aspectRatio, setAspectRatio] = useState(null);
   const [diagnostics, setDiagnostics] = useState(null);
+
+  // ── Dual-Mode Selection: 'staging' (AI Commercial Staging) vs 'cutout' (Clean Background Removal Only) ──
+  const [studioMode, setStudioMode] = useState(capturedPhoto?.studioMode || 'staging');
+  const [stagedMaster, setStagedMaster] = useState(capturedPhoto?.stagedUrl || capturedPhoto?.dataUrl || null);
+  const [pureCutoutMaster, setPureCutoutMaster] = useState(capturedPhoto?.pureCutoutUrl || null);
 
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
@@ -74,7 +80,7 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
       setHudStage({
         stage: 1,
         label: 'Visual Craft Analysis...',
-        detail: 'Analyzing craft texture and form via Gemini Vision...',
+        detail: 'Analyzing craft texture and form via AI Vision...',
         progress: 30,
       });
 
@@ -94,7 +100,22 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
         });
 
         setCleanCutout(result.cutoutUrl);
-        setMasterImage(result.masterUrl);
+        setStagedMaster(result.masterUrl);
+
+        // Pre-composite pure white cutout for instant zero-latency mode switching
+        let cutoutComp = null;
+        try {
+          cutoutComp = await compositeStudioMaster({
+            cutoutDataUrl: result.cutoutUrl || photoData.dataUrl,
+            presetId: 'white',
+          });
+          setPureCutoutMaster(cutoutComp.dataUrl);
+        } catch {
+          setPureCutoutMaster(result.cutoutUrl);
+        }
+
+        const activeMaster = studioMode === 'cutout' && cutoutComp?.dataUrl ? cutoutComp.dataUrl : result.masterUrl;
+        setMasterImage(activeMaster);
         setDiagnostics({
           duration: result.duration,
           metrics: result.metrics,
@@ -109,34 +130,46 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
         // Pass enhanced catalog photo to parent App state
         onPhotoCapture(
           {
-            dataUrl: result.masterUrl,
+            dataUrl: activeMaster,
             rawUrl: photoData.dataUrl,
-            base64: result.masterUrl.startsWith('data:') ? result.masterUrl.split(',')[1] : '',
+            base64: activeMaster.startsWith('data:') ? activeMaster.split(',')[1] : '',
             mimeType: 'image/jpeg',
             name: photoData.name || 'craft-studio-master.jpg',
             cutoutUrl: result.cutoutUrl,
+            stagedUrl: result.masterUrl,
+            pureCutoutUrl: cutoutComp?.dataUrl || result.cutoutUrl,
             activePreset,
+            studioMode,
           },
           false
         );
       } catch (err) {
         console.warn('[KariDoot Studio] Pipeline graceful fallback:', err);
-        // Seamless fallback guarantee: never block the user with error screen
         const fallback = await compositeStudioMaster({
           cutoutDataUrl: photoData.dataUrl,
           presetId: activePreset,
         });
-        setMasterImage(fallback.dataUrl);
+        const whiteFallback = await compositeStudioMaster({
+          cutoutDataUrl: photoData.dataUrl,
+          presetId: 'white',
+        });
+        setStagedMaster(fallback.dataUrl);
+        setPureCutoutMaster(whiteFallback.dataUrl);
+        const chosen = studioMode === 'cutout' ? whiteFallback.dataUrl : fallback.dataUrl;
+        setMasterImage(chosen);
         setCleanCutout(photoData.dataUrl);
         onPhotoCapture(
           {
-            dataUrl: fallback.dataUrl,
+            dataUrl: chosen,
             rawUrl: photoData.dataUrl,
-            base64: fallback.dataUrl.split(',')[1],
+            base64: chosen.split(',')[1],
             mimeType: 'image/jpeg',
             name: photoData.name || 'craft-studio-master.jpg',
             cutoutUrl: photoData.dataUrl,
+            stagedUrl: fallback.dataUrl,
+            pureCutoutUrl: whiteFallback.dataUrl,
             activePreset,
+            studioMode,
           },
           false
         );
@@ -144,18 +177,94 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
         setIsProcessing(false);
       }
     },
-    [activePreset, onPhotoCapture]
+    [activePreset, studioMode, onPhotoCapture]
   );
+
+  // ── Mode Switch: AI Commercial Staging vs Clean Background Removal ──
+  const handleModeChange = async (mode) => {
+    if (mode === studioMode) return;
+    setStudioMode(mode);
+
+    if (!rawImage) return;
+
+    if (mode === 'cutout') {
+      let cutoutUrl = pureCutoutMaster;
+      if (!cutoutUrl) {
+        const comp = await compositeStudioMaster({
+          cutoutDataUrl: cleanCutout || rawImage,
+          presetId: 'white',
+        });
+        cutoutUrl = comp.dataUrl;
+        setPureCutoutMaster(cutoutUrl);
+      }
+      setMasterImage(cutoutUrl);
+      onPhotoCapture(
+        {
+          dataUrl: cutoutUrl,
+          rawUrl: rawImage,
+          base64: cutoutUrl.startsWith('data:') ? cutoutUrl.split(',')[1] : '',
+          mimeType: 'image/jpeg',
+          name: 'craft-pure-cutout.jpg',
+          cutoutUrl: cleanCutout,
+          stagedUrl: stagedMaster,
+          pureCutoutUrl: cutoutUrl,
+          activePreset: 'white',
+          studioMode: 'cutout',
+        },
+        false
+      );
+    } else {
+      // mode === 'staging'
+      let stagedUrl = stagedMaster || presetCache[activePreset];
+      if (!stagedUrl) {
+        const isBlanket =
+          isSampleBlanketAsset(rawImage, null, diagnostics?.visualDescription || '') ||
+          (rawImage && (rawImage.includes('blanket') || rawImage.includes('demo') || rawImage.includes('raw_blanket')));
+        if (isBlanket) {
+          stagedUrl =
+            activePreset === 'white'
+              ? '/demo/staged_white.jpg'
+              : activePreset === 'teak'
+              ? '/demo/staged_teak.jpg'
+              : '/demo/staged_linen.jpg';
+        } else {
+          const comp = await compositeStudioMaster({
+            cutoutDataUrl: cleanCutout || rawImage,
+            presetId: activePreset,
+          });
+          stagedUrl = comp.dataUrl;
+        }
+        setStagedMaster(stagedUrl);
+      }
+      setMasterImage(stagedUrl);
+      onPhotoCapture(
+        {
+          dataUrl: stagedUrl,
+          rawUrl: rawImage,
+          base64: stagedUrl.startsWith('data:') ? stagedUrl.split(',')[1] : '',
+          mimeType: 'image/jpeg',
+          name: `craft-studio-${activePreset}.jpg`,
+          cutoutUrl: cleanCutout,
+          stagedUrl,
+          pureCutoutUrl: pureCutoutMaster,
+          activePreset,
+          studioMode: 'staging',
+        },
+        false
+      );
+    }
+  };
 
   // ── Handle Preset Switch (White, Warm, Teak) ──
   const handleSelectPreset = async (presetId) => {
-    if (presetId === activePreset && masterImage) return;
     setActivePreset(presetId);
+    setStudioMode('staging'); // Selecting a backdrop always engages staging mode
 
     // 1. Cached preset
     if (presetCache[presetId]) {
       const cached = presetCache[presetId];
       setMasterImage(cached);
+      setStagedMaster(cached);
       onPhotoCapture(
         {
           dataUrl: cached,
@@ -164,7 +273,10 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
           mimeType: 'image/jpeg',
           name: `craft-studio-${presetId}.jpg`,
           cutoutUrl: cleanCutout,
+          stagedUrl: cached,
+          pureCutoutUrl: pureCutoutMaster,
           activePreset: presetId,
+          studioMode: 'staging',
         },
         false
       );
@@ -184,6 +296,7 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
       if (presetId === 'teak') demoMaster = '/demo/staged_teak.jpg';
 
       setMasterImage(demoMaster);
+      setStagedMaster(demoMaster);
       setPresetCache((prev) => ({ ...prev, [presetId]: demoMaster }));
       onPhotoCapture(
         {
@@ -193,7 +306,10 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
           mimeType: 'image/jpeg',
           name: `craft-studio-${presetId}.jpg`,
           cutoutUrl: cleanCutout,
+          stagedUrl: demoMaster,
+          pureCutoutUrl: pureCutoutMaster,
           activePreset: presetId,
+          studioMode: 'staging',
         },
         false
       );
@@ -210,6 +326,7 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
       });
 
       setMasterImage(composited.dataUrl);
+      setStagedMaster(composited.dataUrl);
       setPresetCache((prev) => ({
         ...prev,
         [presetId]: composited.dataUrl,
@@ -223,7 +340,10 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
           mimeType: 'image/jpeg',
           name: `craft-studio-${presetId}.jpg`,
           cutoutUrl: cleanCutout,
+          stagedUrl: composited.dataUrl,
+          pureCutoutUrl: pureCutoutMaster,
           activePreset: presetId,
+          studioMode: 'staging',
         },
         false
       );
@@ -387,6 +507,8 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
     setRawImage(null);
     setCleanCutout(null);
     setMasterImage(null);
+    setStagedMaster(null);
+    setPureCutoutMaster(null);
     setPresetCache({});
     setDiagnostics(null);
     setHudStage(null);
@@ -405,6 +527,51 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
           Upload any craft photo — pottery, handloom, brass, woodwork, leather, or jewelry. Our AI pipeline isolates the product, removes cluttered workshop backgrounds, and stages it on a marketplace-ready studio backdrop.
         </p>
       </div>
+
+      {/* ── Mode Selection Pill (Before Upload) ── */}
+      {!rawImage && !cameraActive && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-white/4 border border-white/10 rounded-2xl">
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg">{studioMode === 'staging' ? '✨' : '✂️'}</span>
+            <div>
+              <p className="text-xs font-bold text-white uppercase tracking-wider">
+                Desired Output Mode:
+              </p>
+              <p className="text-[11px] text-white/50">
+                {studioMode === 'staging'
+                  ? 'Generative lifestyle staging with authentic ambient lighting'
+                  : 'Amazon/Flipkart compliant #FFFFFF background with floor shadow'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => setStudioMode('staging')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                studioMode === 'staging'
+                  ? 'bg-saffron text-obsidian shadow-md shadow-saffron/20'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <span>✨</span>
+              <span>AI Staging</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStudioMode('cutout')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                studioMode === 'cutout'
+                  ? 'bg-emerald-craft text-obsidian shadow-md shadow-emerald-craft/20'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <span>✂️</span>
+              <span>Pure Cutout</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Initial Upload / Camera Prompt ── */}
       {!rawImage && !cameraActive && (
@@ -602,6 +769,50 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
       {/* ── BEFORE / AFTER SPLIT COMPARISON SLIDER ── */}
       {rawImage && (
         <div className="space-y-5">
+          {/* ── DUAL-MODE SELECTOR: AI Staging vs Clean Background Removal ── */}
+          <div className="glass-card p-3 border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">{studioMode === 'staging' ? '✨' : '✂️'}</span>
+              <div>
+                <p className="text-xs font-bold text-white uppercase tracking-wider">
+                  Select Output Mode:
+                </p>
+                <p className="text-[11px] text-white/50">
+                  {studioMode === 'staging'
+                    ? 'Generative lifestyle scene with props and warm window lighting'
+                    : 'Pure #FFFFFF background compliant with Amazon, Flipkart & ONDC'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/10 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => handleModeChange('staging')}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  studioMode === 'staging'
+                    ? 'bg-gradient-to-r from-saffron to-amber-500 text-obsidian shadow-[0_0_20px_rgba(245,158,11,0.35)] scale-[1.02]'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>✨</span>
+                <span>AI Commercial Staging</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('cutout')}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 py-2 px-3.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                  studioMode === 'cutout'
+                    ? 'bg-gradient-to-r from-emerald-craft to-emerald-400 text-obsidian shadow-[0_0_20px_rgba(16,185,129,0.35)] scale-[1.02]'
+                    : 'text-white/60 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span>✂️</span>
+                <span>Clean Background Removal</span>
+              </button>
+            </div>
+          </div>
+
           <div
             ref={sliderRef}
             onMouseDown={handleMouseDown}
@@ -660,14 +871,17 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
               )}
 
               <div
-                className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-saffron border border-saffron/40 flex items-center gap-2 shadow-lg"
+                className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl text-xs font-mono font-bold border flex items-center gap-2 shadow-lg"
                 style={{
                   background: 'rgba(11, 15, 23, 0.85)',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: '0 0 16px rgba(245,158,11,0.25)',
+                  borderColor: studioMode === 'cutout' ? 'rgba(16,185,129,0.5)' : 'rgba(245,158,11,0.5)',
+                  color: studioMode === 'cutout' ? '#10B981' : '#F59E0B',
+                  boxShadow: studioMode === 'cutout' ? '0 0 16px rgba(16,185,129,0.25)' : '0 0 16px rgba(245,158,11,0.25)',
                 }}
               >
-                <span>✨</span> STUDIO MASTER
+                <span>{studioMode === 'cutout' ? '✂️' : '✨'}</span>
+                <span>{studioMode === 'cutout' ? 'PURE CUTOUT (#FFFFFF)' : 'AI STAGED MASTER'}</span>
               </div>
             </div>
 
@@ -695,53 +909,75 @@ export default function PhotoStudio({ onPhotoCapture, capturedPhoto, onNext }) {
             <span>Drag right: Inspect Raw Photo ▶</span>
           </div>
 
-          {/* ── STUDIO SCENE SELECTOR (Option A: Studio White, Option B: Warm Surface) ── */}
-          <div className="glass-card p-5 border-white/10 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Palette size={16} className="text-saffron" />
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                  Select Clean Studio Backdrop
-                </span>
+          {/* ── STUDIO SCENE SELECTOR (Only in Staging Mode) ── */}
+          {studioMode === 'staging' && (
+            <div className="glass-card p-5 border-white/10 space-y-3 animate-fade-slide-up">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Palette size={16} className="text-saffron" />
+                  <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                    Select Clean Studio Backdrop
+                  </span>
+                </div>
+                <span className="text-[11px] text-emerald-craft font-medium">Instant Switching</span>
               </div>
-              <span className="text-[11px] text-emerald-craft font-medium">Instant Switching</span>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {STUDIO_PRESETS.map((preset) => {
-                const isActive = activePreset === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    onClick={() => handleSelectPreset(preset.id)}
-                    disabled={isProcessing}
-                    className={`relative p-4 rounded-2xl border text-left transition-all duration-200 ${
-                      isActive
-                        ? 'border-saffron bg-saffron/15 shadow-[0_0_20px_rgba(245,158,11,0.25)] scale-[1.01]'
-                        : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/6'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-2xl">{preset.icon}</span>
-                      <span
-                        className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                          isActive
-                            ? 'bg-saffron/20 border-saffron/40 text-saffron'
-                            : 'bg-white/5 border-white/10 text-white/40'
-                        }`}
-                      >
-                        {preset.badge}
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-white mb-1">{preset.name}</p>
-                    <p className="text-xs text-white/50 leading-relaxed">
-                      {preset.description}
-                    </p>
-                  </button>
-                );
-              })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {STUDIO_PRESETS.map((preset) => {
+                  const isActive = activePreset === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => handleSelectPreset(preset.id)}
+                      disabled={isProcessing}
+                      className={`relative p-4 rounded-2xl border text-left transition-all duration-200 ${
+                        isActive
+                          ? 'border-saffron bg-saffron/15 shadow-[0_0_20px_rgba(245,158,11,0.25)] scale-[1.01]'
+                          : 'border-white/10 bg-white/3 hover:border-white/20 hover:bg-white/6'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-2xl">{preset.icon}</span>
+                        <span
+                          className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                            isActive
+                              ? 'bg-saffron/20 border-saffron/40 text-saffron'
+                              : 'bg-white/5 border-white/10 text-white/40'
+                          }`}
+                        >
+                          {preset.badge}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-white mb-1">{preset.name}</p>
+                      <p className="text-xs text-white/50 leading-relaxed">
+                        {preset.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── MARKETPLACE COMPLIANCE CARD (Only in Pure Cutout Mode) ── */}
+          {studioMode === 'cutout' && (
+            <div className="glass-card p-5 border-emerald-craft/30 bg-emerald-craft/5 flex items-start gap-3.5 animate-fade-slide-up">
+              <div className="w-10 h-10 rounded-xl bg-emerald-craft/20 border border-emerald-craft/40 flex items-center justify-center text-emerald-craft shrink-0 mt-0.5">
+                <CheckCircle2 size={22} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-white">Pure Cutout Active (Amazon &amp; Flipkart Compliant)</h4>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-craft/20 text-emerald-craft border border-emerald-craft/30">
+                    100% Marketplace Standards
+                  </span>
+                </div>
+                <p className="text-xs text-white/60 leading-relaxed">
+                  Strictly removes background clutter without generative styling. Your craft is centered on a pure #FFFFFF canvas with an authentic contact shadow, ready for direct listing on Amazon Karigar, Flipkart Samarth, and ONDC.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* ── Diagnostics Banner ── */}
           {diagnostics && (
