@@ -29,6 +29,7 @@ import {
   Bot,
   User,
 } from 'lucide-react';
+import { getGeminiKey } from '../services/aiService';
 
 const SUGGESTED_QUERIES = [
   'Change my labour cost to 600 rupees',
@@ -61,6 +62,19 @@ export default function AIAssistant({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const appendMessage = (text, sender = 'ai') => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `${sender}-${Date.now()}`,
+        sender,
+        text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
+  };
 
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -371,15 +385,15 @@ export default function AIAssistant({
       };
     }
 
-    // Default Fallback
+    // Default Fallback: Delegate general questions to dynamic Gemini 1.5 Flash API
     return {
-      type: 'answer',
-      text: `I understand you're asking about "${query}". You can ask me to perform actions like:\n• "Change labour cost to ₹600"\n• "Set margin to 60%"\n• "Take me to Step 4 (Pricing)"\n• "What are PM Vishwakarma benefits?"\n• "Explain Win-Win pricing"`,
+      type: 'gemini',
+      query,
     };
   };
 
   // Handle Send Message
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputVal.trim()) return;
 
     const userText = inputVal.trim();
@@ -395,11 +409,11 @@ export default function AIAssistant({
     setMessages((prev) => [...prev, userMsg]);
     setInputVal('');
 
-    // Analyze query for action vs Q&A
+    // Analyze query for action vs Q&A vs general question
     const analysis = analyzeQuery(userText);
 
-    setTimeout(() => {
-      if (analysis.type === 'action') {
+    if (analysis.type === 'action') {
+      setTimeout(() => {
         const aiMsg = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
@@ -411,7 +425,9 @@ export default function AIAssistant({
           },
         };
         setMessages((prev) => [...prev, aiMsg]);
-      } else {
+      }, 350);
+    } else if (analysis.type === 'answer') {
+      setTimeout(() => {
         const aiMsg = {
           id: `ai-${Date.now()}`,
           sender: 'ai',
@@ -419,8 +435,49 @@ export default function AIAssistant({
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
         setMessages((prev) => [...prev, aiMsg]);
+      }, 350);
+    } else {
+      setIsTyping(true);
+      try {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || getGeminiKey();
+        
+        const promptText = `You are KariDoot AI Sahayak, a helpful business assistant for Indian artisans and weavers. The user is asking: "${userText}". Provide a short, helpful, step-by-step answer in 2-3 sentences. Do not use markdown, keep it plain text.`;
+
+        // Attempt gemini-1.5-flash as specified, seamlessly falling back to available flash models if 1.5-flash is deprecated
+        const candidateModels = ['gemini-1.5-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
+        let aiReply = null;
+
+        for (const model of candidateModels) {
+          try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: promptText }] }]
+              })
+            });
+            const data = await response.json();
+            if (data.candidates && data.candidates.length > 0) {
+              aiReply = data.candidates[0].content.parts[0].text;
+              break;
+            }
+          } catch (modelErr) {
+            console.warn(`Model ${model} request failed:`, modelErr);
+          }
+        }
+
+        if (aiReply) {
+          appendMessage(aiReply);
+        } else {
+          throw new Error("No response from Gemini");
+        }
+      } catch (error) {
+        console.error("Gemini API Error:", error);
+        appendMessage("I'm having trouble connecting to the network right now. Please try again.");
+      } finally {
+        setIsTyping(false);
       }
-    }, 350);
+    }
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -668,6 +725,19 @@ export default function AIAssistant({
                 </div>
               );
             })}
+            {isTyping && (
+              <div className="flex gap-2.5 justify-start">
+                <div className="w-6 h-6 rounded-full bg-saffron/20 border border-saffron/40 flex items-center justify-center text-saffron shrink-0 mt-0.5 animate-pulse">
+                  <Sparkles size={12} />
+                </div>
+                <div className="p-3 rounded-2xl bg-white/6 border border-white/10 text-white/60 text-xs flex items-center gap-1.5 shadow-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-saffron animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-saffron animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-saffron animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span className="text-[11px] text-white/40 ml-1.5 font-mono">Thinking...</span>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 

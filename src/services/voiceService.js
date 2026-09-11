@@ -6,15 +6,33 @@ import { VOICE_INSTRUCTIONS } from '../data/mockArtisanData';
 // ─────────────────────────────────────────────────────────────
 // TEXT-TO-SPEECH — Voice Copilot
 // ─────────────────────────────────────────────────────────────
-const LANG_MAP = {
-  hi: 'hi-IN',
-  te: 'te-IN',
-  ta: 'ta-IN',
-  bn: 'bn-IN',
-  en: 'en-IN',
+// Map your UI dropdown labels to BCP 47 language tags
+export const languageMap = {
+  'Telugu': 'te-IN',
+  'Hindi': 'hi-IN',
+  'Tamil': 'ta-IN',
+  'Bengali': 'bn-IN',
+  'English': 'en-IN',
+  'te': 'te-IN',
+  'hi': 'hi-IN',
+  'ta': 'ta-IN',
+  'bn': 'bn-IN',
+  'en': 'en-IN'
 };
 
-let currentUtterance = null;
+// Call this function when the user clicks "Next Step" or the Speaker icon
+export const triggerVoiceGuidance = (instructionText, selectedLanguage = 'English') => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+  
+  // IMMEDIATELY cancel any stuck audio to prevent silent hanging
+  window.speechSynthesis.cancel(); 
+  
+  const utterance = new SpeechSynthesisUtterance(instructionText);
+  utterance.lang = languageMap[selectedLanguage] || 'en-IN';
+  utterance.rate = 0.9; // Slightly slower for better regional pronunciation
+  
+  window.speechSynthesis.speak(utterance);
+};
 
 export function speakInstruction(stepKey, dialect = 'hi', enabled = true) {
   if (!enabled || typeof window === 'undefined' || !window.speechSynthesis) return;
@@ -22,24 +40,7 @@ export function speakInstruction(stepKey, dialect = 'hi', enabled = true) {
   const text = VOICE_INSTRUCTIONS[dialect]?.[stepKey] || VOICE_INSTRUCTIONS.en?.[stepKey] || '';
   if (!text) return;
 
-  // Cancel any current speech
-  window.speechSynthesis.cancel();
-
-  currentUtterance = new SpeechSynthesisUtterance(text);
-  currentUtterance.lang = LANG_MAP[dialect] || 'hi-IN';
-  currentUtterance.rate = 0.9;
-  currentUtterance.pitch = 1.05;
-  currentUtterance.volume = 1;
-
-  // Try to find a matching voice
-  const voices = window.speechSynthesis.getVoices();
-  const targetLang = LANG_MAP[dialect] || 'hi-IN';
-  const matchedVoice = voices.find((v) => v.lang.startsWith(targetLang.split('-')[0]));
-  if (matchedVoice) {
-    currentUtterance.voice = matchedVoice;
-  }
-
-  window.speechSynthesis.speak(currentUtterance);
+  triggerVoiceGuidance(text, dialect);
 }
 
 export function stopSpeaking() {
@@ -60,7 +61,7 @@ export function createVoiceRecorder(dialect = 'hi', onResult, onError, onStateCh
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
 
-  recognition.lang = LANG_MAP[dialect] || 'hi-IN';
+  recognition.lang = languageMap[dialect] || 'hi-IN';
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.maxAlternatives = 1;
@@ -115,7 +116,7 @@ export function createVoiceRecorder(dialect = 'hi', onResult, onError, onStateCh
     stop: () => {
       try {
         recognition.stop();
-      } catch (e) {
+      } catch {
         // ignore
       }
     },

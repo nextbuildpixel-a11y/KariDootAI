@@ -1,7 +1,7 @@
-// KariDoot AI · Craft-Tech Studio — Navbar
 import { useState } from 'react';
-import { Globe, Volume2, VolumeX, ChevronDown, Zap } from 'lucide-react';
-import { DIALECTS } from '../data/mockArtisanData';
+import { Globe, Volume2, VolumeX, ChevronDown } from 'lucide-react';
+import { DIALECTS, VOICE_INSTRUCTIONS } from '../data/mockArtisanData';
+import { triggerVoiceGuidance } from '../services/voiceService';
 
 const STEPS = [
   { id: 1, label: 'Vision Studio', icon: '◎' },
@@ -14,6 +14,23 @@ const STEPS = [
 export default function Navbar({ currentStep, maxStep = currentStep, onStepClick, dialect, onDialectChange, voiceEnabled, onVoiceToggle }) {
   const [showDialect, setShowDialect] = useState(false);
   const currentDialect = DIALECTS.find((d) => d.code === dialect) || DIALECTS[0];
+
+  const handleSelectDialect = (selected) => {
+    onDialectChange(selected.code);
+    setShowDialect(false);
+    const instruction = VOICE_INSTRUCTIONS[selected.code]?.[`step${currentStep}`] || VOICE_INSTRUCTIONS.en?.[`step${currentStep}`] || '';
+    if (instruction) {
+      triggerVoiceGuidance(instruction, selected.name);
+    }
+  };
+
+  const handleSpeakerClick = () => {
+    onVoiceToggle();
+    const instruction = VOICE_INSTRUCTIONS[dialect]?.[`step${currentStep}`] || VOICE_INSTRUCTIONS.en?.[`step${currentStep}`] || '';
+    if (instruction) {
+      triggerVoiceGuidance(instruction, currentDialect.name);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/5" style={{ background: 'rgba(11,15,23,0.85)', backdropFilter: 'blur(20px)' }}>
@@ -63,7 +80,7 @@ export default function Navbar({ currentStep, maxStep = currentStep, onStepClick
                     {DIALECTS.map((d) => (
                       <button
                         key={d.code}
-                        onClick={() => { onDialectChange(d.code); setShowDialect(false); }}
+                        onClick={() => handleSelectDialect(d)}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium transition-colors
                           ${dialect === d.code ? 'text-saffron bg-saffron/10' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
                       >
@@ -78,7 +95,7 @@ export default function Navbar({ currentStep, maxStep = currentStep, onStepClick
 
             {/* Voice Toggle */}
             <button
-              onClick={onVoiceToggle}
+              onClick={handleSpeakerClick}
               title={voiceEnabled ? 'AI Sahayak: ON' : 'AI Sahayak: OFF'}
               className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all duration-200
                 ${voiceEnabled

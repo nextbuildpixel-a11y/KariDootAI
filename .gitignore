@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 *.local
+scratch/
 
 # Dependencies
 node_modules/

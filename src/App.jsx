@@ -9,6 +9,9 @@ import PhotoStudio from './components/PhotoStudio';
 import VoiceCatalog from './components/VoiceCatalog';
 import WinWinPricing from './components/WinWinPricing';
 import OmnichannelHub from './components/OmnichannelHub';
+import { getCategoryPreset } from './services/aiService';
+import { triggerVoiceGuidance } from './services/voiceService';
+import { DIALECTS, VOICE_INSTRUCTIONS } from './data/mockArtisanData';
 
 export default function App() {
   const [step, setStep] = useState(1);
@@ -22,9 +25,22 @@ export default function App() {
   // Track highest step reached — used to unlock forward navigation
   const [maxStep, setMaxStep] = useState(1);
 
+  const speakForStep = (stepNumber) => {
+    if (!voiceEnabled) return;
+    const langObj = DIALECTS.find((d) => d.code === dialect);
+    const langName = langObj?.name || 'English';
+    const instruction = VOICE_INSTRUCTIONS[dialect]?.[`step${stepNumber}`] || VOICE_INSTRUCTIONS.en?.[`step${stepNumber}`] || '';
+    if (instruction) {
+      triggerVoiceGuidance(instruction, langName);
+    }
+  };
+
   const goTo = (s) => {
     // Allow navigation to any step ≤ maxStep (already visited)
-    if (s >= 1 && s <= 5 && s <= maxStep) setStep(s);
+    if (s >= 1 && s <= 5 && s <= maxStep) {
+      speakForStep(s);
+      setStep(s);
+    }
   };
 
   // Agentic Action Handlers for AI Sahayak
@@ -39,19 +55,23 @@ export default function App() {
     const val = Number(amount);
     if (isNaN(val)) return false;
 
+    const p = getCategoryPreset(
+      `${catalogData?.category || ''} ${catalogData?.craft_category || ''} ${catalogData?.title_en || ''} ${photo?.visualDescription || ''} ${photo?.name || ''}`
+    );
+
     setPricingData((prev) => {
       const currentCosts = prev?.costBreakdown || {
-        material: Number(catalogData?.cost_breakdown?.material_cost) || 120,
-        labour: Number(catalogData?.cost_breakdown?.labour_cost) || 180,
-        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || 40,
-        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || 80,
+        material: Number(catalogData?.cost_breakdown?.material_cost) || p.material,
+        labour: Number(catalogData?.cost_breakdown?.labour_cost) || p.labour,
+        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || p.packaging,
+        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || p.logistics,
       };
       const updatedCosts = { ...currentCosts, [validField]: val };
       const currentMargin = prev?.marginPercent ?? 50;
       const baseCost = Object.values(updatedCosts).reduce((a, b) => a + (Number(b) || 0), 0);
       const sellingPrice = Math.round(baseCost * (1 + currentMargin / 100));
       const profit = sellingPrice - baseCost;
-      const marketPrice = prev?.marketPrice || Math.round(baseCost * 1.95);
+      const marketPrice = prev?.marketPrice || p.retailBenchmark || Math.round(baseCost * 1.85);
       return {
         ...prev,
         costBreakdown: updatedCosts,
@@ -70,17 +90,21 @@ export default function App() {
     const val = Math.max(10, Math.min(150, Number(pct)));
     if (isNaN(val)) return false;
 
+    const p = getCategoryPreset(
+      `${catalogData?.category || ''} ${catalogData?.craft_category || ''} ${catalogData?.title_en || ''} ${photo?.visualDescription || ''} ${photo?.name || ''}`
+    );
+
     setPricingData((prev) => {
       const currentCosts = prev?.costBreakdown || {
-        material: Number(catalogData?.cost_breakdown?.material_cost) || 120,
-        labour: Number(catalogData?.cost_breakdown?.labour_cost) || 180,
-        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || 40,
-        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || 80,
+        material: Number(catalogData?.cost_breakdown?.material_cost) || p.material,
+        labour: Number(catalogData?.cost_breakdown?.labour_cost) || p.labour,
+        packaging: Number(catalogData?.cost_breakdown?.packaging_cost) || p.packaging,
+        logistics: Number(catalogData?.cost_breakdown?.logistics_cost) || p.logistics,
       };
       const baseCost = Object.values(currentCosts).reduce((a, b) => a + (Number(b) || 0), 0);
       const sellingPrice = Math.round(baseCost * (1 + val / 100));
       const profit = sellingPrice - baseCost;
-      const marketPrice = prev?.marketPrice || Math.round(baseCost * 1.95);
+      const marketPrice = prev?.marketPrice || p.retailBenchmark || Math.round(baseCost * 1.85);
       return {
         ...prev,
         costBreakdown: currentCosts,
@@ -101,6 +125,7 @@ export default function App() {
 
   const nextStep = () => {
     const next = Math.min(5, step + 1);
+    speakForStep(next);
     setStep(next);
     setMaxStep((m) => Math.max(m, next));
   };
@@ -112,6 +137,7 @@ export default function App() {
     setPhoto(data);
     if (data && autoAdvance && step === 1) {
       const next = 2;
+      speakForStep(next);
       setStep(next);
       setMaxStep((m) => Math.max(m, next));
     }
@@ -122,6 +148,7 @@ export default function App() {
     setCatalogData(data);
     if (step === 2) {
       const next = 3;
+      speakForStep(next);
       setStep(next);
       setMaxStep((m) => Math.max(m, next));
     }
@@ -131,10 +158,18 @@ export default function App() {
   const handleCatalogUpdate = (data) => setCatalogData(data);
 
   // Step 3 → 4
-  const handleCatalogNext = () => { setStep(4); setMaxStep((m) => Math.max(m, 4)); };
+  const handleCatalogNext = () => {
+    speakForStep(4);
+    setStep(4);
+    setMaxStep((m) => Math.max(m, 4));
+  };
 
   // Step 4 → 5
-  const handlePricingNext = () => { setStep(5); setMaxStep((m) => Math.max(m, 5)); };
+  const handlePricingNext = () => {
+    speakForStep(5);
+    setStep(5);
+    setMaxStep((m) => Math.max(m, 5));
+  };
 
   // "Next →" is enabled if: current step < maxStep (already completed) OR step-specific condition met
   const nextEnabled =
@@ -209,6 +244,7 @@ export default function App() {
           <WinWinPricing
             catalogData={catalogData}
             pricingData={pricingData}
+            photo={photo}
             onPricingReady={setPricingData}
             onNext={handlePricingNext}
           />

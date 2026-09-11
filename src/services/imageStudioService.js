@@ -1,8 +1,7 @@
 // KariDoot AI · True Generative AI Lifestyle Staging & Resilient Studio Pipeline
-// 1. Visual Analysis via Gemini 3.6 Flash Vision
-// 2. Generative Lifestyle Staging via Google Imagen 3 API
-// 3. Fail-Safe Smart Fallback: Zero-Latency Demo Guarantee & Local Canvas Studio Compositing
-// 4. ZERO blocking error screens, ZERO fake vignettes, 100% resilient commercial output
+// Mode A: ✨ AI Commercial Staging (Google Imagen 3 API + category-specific lifestyle restaging)
+// Mode B: ✂️ Clean Background Removal (Pure #FFFFFF canvas + contact drop shadow)
+// ZERO fake filters, ZERO brightness/contrast hacks, ZERO vignettes.
 
 export const STUDIO_PRESETS = [
   {
@@ -13,18 +12,18 @@ export const STUDIO_PRESETS = [
     badge: 'Artisan Boutique',
   },
   {
-    id: 'white',
-    name: 'E-Commerce Studio White',
-    icon: '⚪',
-    description: 'Pure #FFFFFF clean studio background compliant with Amazon & Flipkart standards',
-    badge: '100% Marketplace Compliant',
-  },
-  {
     id: 'teak',
     name: 'Heritage Teak & Stone',
     icon: '🪵',
     description: 'Sunlit natural wooden counter with organic artisanal styling',
     badge: 'Craft Heritage',
+  },
+  {
+    id: 'white',
+    name: 'E-Commerce Studio White',
+    icon: '⚪',
+    description: 'Pure #FFFFFF clean studio background compliant with Amazon & Flipkart standards',
+    badge: '100% Marketplace Compliant',
   },
 ];
 
@@ -80,7 +79,6 @@ export async function downscaleForInference(imageSource, maxDim = 1024) {
       canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
     };
     img.onerror = () => {
-      // Return original source if load fails
       if (imageSource instanceof Blob) resolve(imageSource);
       else fetch(imageSource).then((r) => r.blob()).then(resolve).catch(() => resolve(null));
     };
@@ -91,7 +89,85 @@ export async function downscaleForInference(imageSource, maxDim = 1024) {
 export const compressAndResize = downscaleForInference;
 
 // ─────────────────────────────────────────────────────────────
-// STEP 1: VISUAL ANALYSIS (GEMINI FLASH VISION)
+// ABORT TIMEOUT UTILITY
+// Default: 35 s — matches the pipeline's outer timeout so individual sub-calls
+// have room to complete before the race is lost.
+// ─────────────────────────────────────────────────────────────
+export async function fetchWithTimeout(endpoint, options = {}, timeoutMs = 35000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(endpoint, {
+      signal: controller.signal,
+      ...options,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
+/**
+ * Promise race wrapper.
+ * Default timeout: 35 s (aligns with the pipeline budget).
+ * Accepts either:
+ *  - a task function / promise: processImageWithTimeout(() => runStudioPipeline(...), 35000)
+ *  - or (uploadedImage, activeMode): processImageWithTimeout(uploadedImage, activeMode)
+ */
+export async function processImageWithTimeout(taskOrImage, activeModeOrTimeout = 35000, timeoutMs = 35000) {
+  const timeout = typeof activeModeOrTimeout === 'number' ? activeModeOrTimeout : timeoutMs;
+  let taskPromise;
+
+  if (typeof taskOrImage === 'function') {
+    taskPromise = taskOrImage();
+  } else if (taskOrImage && typeof taskOrImage.then === 'function') {
+    taskPromise = taskOrImage;
+  } else {
+    // Called as processImageWithTimeout(uploadedImage, activeMode)
+    const activeMode = typeof activeModeOrTimeout === 'string' ? activeModeOrTimeout : 'staging';
+    const rawPhotoDataUrl = typeof taskOrImage === 'string' ? taskOrImage : (taskOrImage?.dataUrl || taskOrImage);
+    const rawFile = typeof taskOrImage === 'object' && !(taskOrImage instanceof String) ? taskOrImage : null;
+
+    taskPromise = runStudioPipeline({
+      rawPhotoDataUrl,
+      rawFile,
+      activePreset: 'warm',
+    }).then((res) => (activeMode === 'cutout' ? (res.cutoutImageUrl || res.cutoutUrl) : (res.stagedImageUrl || res.stagedUrl)));
+  }
+
+  return Promise.race([
+    taskPromise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Studio processing exceeded ${timeout}ms timeout`)), timeout)
+    ),
+  ]);
+}
+
+/**
+ * Returns null URLs — the artisan's own uploaded image is always used as the display source.
+ * This function is kept for compatibility with mode-switch fallback logic but must never
+ * return static demo paths. Callers should treat null as "not yet processed".
+ */
+export function getEmergencyFallback(uploadedImage, activeMode = 'staging', fileName = '', visualDescription = '') {
+  // Never return a hardcoded demo path. Return null so callers fall back to rawImage.
+  return {
+    chosenImage: null,
+    stagedImageUrl: null,
+    cutoutImageUrl: null,
+    stagedUrl: null,
+    pureCutoutUrl: null,
+    cutoutUrl: null,
+    type: 'unknown',
+    toString() { return null; },
+    valueOf() { return null; },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// STEP 1: DYNAMIC VISUAL INSPECTION (GEMINI FLASH VISION)
 // ─────────────────────────────────────────────────────────────
 export async function analyzeCraftVisuals(imageDataUrlOrBase64, mimeType = 'image/jpeg') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -109,89 +185,207 @@ export async function analyzeCraftVisuals(imageDataUrlOrBase64, mimeType = 'imag
       });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
+    const models = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const response = await fetchWithTimeout(
+          url,
           {
-            parts: [
-              {
-                text: 'Analyze this artisan product. Describe its material, color palette, patterns, and shape in 2 concise sentences so an image generator can recreate it faithfully in a staged setting.',
-              },
-              {
-                inlineData: {
-                  mimeType: mimeType || 'image/jpeg',
-                  data: base64Data,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: "Analyze this craft item. In 5 words, identify the exact product (e.g. 'patchwork quilted blanket', 'terracotta pot', 'wooden fountain pen').",
+                    },
+                    {
+                      inlineData: {
+                        mimeType: mimeType || 'image/jpeg',
+                        data: base64Data,
+                      },
+                    },
+                  ],
                 },
-              },
-            ],
+              ],
+            }),
           },
-        ],
-      }),
-    });
+          10000 // 10-second timeout for Gemini Vision (allows model warm-up)
+        );
 
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
-  } catch (err) {
-    console.warn('[KariDoot Studio] Gemini visual analysis note:', err.message);
-    return null;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
-// STEP 2: GENERATE STAGED LIFESTYLE PHOTO (GOOGLE IMAGEN 3 API)
-// ─────────────────────────────────────────────────────────────
-export async function generateImagenStagedPhoto(craftDescription, presetId = 'warm') {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey || !craftDescription) return null;
-
-  const surfaceDesc =
-    presetId === 'white'
-      ? 'minimalist pure white seamless studio surface'
-      : presetId === 'teak'
-      ? 'warm rustic teak hardwood surface with soft golden hour natural sunlight'
-      : 'minimalist cream linen bedding accompanied by subtle aesthetic home decor props (wooden tray with cotton stems, lifestyle magazine)';
-
-  const stagingPrompt = `High-end luxury commercial e-commerce product photography of ${craftDescription}. The product is presented perfectly and neatly folded or placed on ${surfaceDesc}, bathed in soft warm morning window light. 8k resolution, award-winning editorial catalog photography.`;
-
-  console.log('[KariDoot Studio] Requesting Imagen 3 staging with prompt:', stagingPrompt.slice(0, 100) + '...');
-
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [{ prompt: stagingPrompt }],
-        parameters: {
-          sampleCount: 1,
-          aspectRatio: '4:3',
-          outputMimeType: 'image/jpeg',
-        },
-      }),
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (data.predictions?.[0]?.bytesBase64Encoded) {
-      return `data:image/jpeg;base64,${data.predictions[0].bytesBase64Encoded}`;
+        if (response.ok) {
+          const data = await response.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) {
+            console.log(`[KariDoot Studio] Gemini Vision (${model}) identified:`, text);
+            return text;
+          }
+        }
+      } catch {
+        // try next model or fallback
+      }
     }
   } catch (err) {
-    console.warn('[KariDoot Studio] Imagen 3 staging note:', err.message);
+    console.error('[KariDoot Studio] Gemini visual analysis failed:', err);
   }
   return null;
 }
 
 // ─────────────────────────────────────────────────────────────
-// STEP 3: FAIL-SAFE PRODUCT SEGMENTATION & CLEAN LOCAL COMPOSITOR
+// DYNAMIC ITEM-AWARE STAGING SCENE SELECTOR
+// Returns prompt + surface metadata for Imagen 3.
+// No fallbackAsset / cutoutAsset — real raw image is always used as fallback.
 // ─────────────────────────────────────────────────────────────
+export function getStagingConfigForItem(visualDescription = '', fileName = '', rawFile = null) {
+  // Strip any raw data URL content so base64 bytes never cause accidental keyword matches
+  const safeName = typeof fileName === 'string' && !fileName.startsWith('data:') ? fileName : '';
+  const text = `${visualDescription} ${safeName} ${rawFile?.name || ''}`.toLowerCase();
 
-/**
- * Attempts RMBG background removal; if remote fails, cleanly segments foreground in-browser.
- */
+  // 1. Blanket / Handloom / Quilt / Cloth / Fabric / Textile / Bedding / Wool
+  if (
+    text.includes('blanket') ||
+    text.includes('quilt') ||
+    text.includes('cloth') ||
+    text.includes('fabric') ||
+    text.includes('textile') ||
+    text.includes('shawl') ||
+    text.includes('wool') ||
+    text.includes('stole') ||
+    text.includes('bedding') ||
+    text.includes('knitted') ||
+    text.includes('tufted') ||
+    text.includes('saree') ||
+    text.includes('silk') ||
+    text.includes('dupatta') ||
+    text.includes('linen') ||
+    text.includes('weave') ||
+    text.includes('handloom')
+  ) {
+    const itemLabel = visualDescription || 'handwoven artisan textile';
+    return {
+      type: 'blanket',
+      identifiedProduct: itemLabel,
+      prompt: `Award-winning commercial catalog lifestyle photograph of a ${itemLabel}. Neatly presented, aesthetic studio composition, soft morning window light, high resolution, 8k e-commerce editorial standards.`,
+      surfaceName: 'Minimalist Cream Linen Bedding',
+      presetDefault: 'warm',
+    };
+  }
+
+  // 2. Pen / Writing Instruments
+  if (/\b(pen|pens|ballpoint|fountain|quill|nib|stationery)\b/i.test(text)) {
+    const itemLabel = visualDescription || 'handcrafted wooden fountain pen';
+    return {
+      type: 'pen',
+      identifiedProduct: itemLabel,
+      prompt: `Award-winning commercial catalog lifestyle photograph of a ${itemLabel}. Neatly presented, aesthetic studio composition, soft morning window light, high resolution, 8k e-commerce editorial standards.`,
+      surfaceName: 'Rustic Wooden Desk & Leather Journal',
+      presetDefault: 'teak',
+    };
+  }
+
+  // 3. Terracotta / Clay / Pot / Vase / Brass / Metalcraft
+  if (
+    text.includes('pot') ||
+    text.includes('clay') ||
+    text.includes('terracotta') ||
+    text.includes('vase') ||
+    text.includes('surahi') ||
+    text.includes('ceramic') ||
+    text.includes('brass') ||
+    text.includes('diya') ||
+    text.includes('bronze')
+  ) {
+    const itemLabel = visualDescription || 'handcrafted terracotta clay pot';
+    return {
+      type: 'terracotta_brass',
+      identifiedProduct: itemLabel,
+      prompt: `Award-winning commercial catalog lifestyle photograph of a ${itemLabel}. Neatly presented, aesthetic studio composition, soft morning window light, high resolution, 8k e-commerce editorial standards.`,
+      surfaceName: 'Clean Natural Stone & Teak Surface',
+      presetDefault: 'teak',
+    };
+  }
+
+  // 4. Generic uploaded craft — use Gemini vision label or a safe generic label
+  const itemLabel = visualDescription || 'handcrafted artisan product';
+  return {
+    type: 'custom',
+    identifiedProduct: itemLabel,
+    prompt: `Award-winning commercial catalog lifestyle photograph of a ${itemLabel}. Neatly presented, aesthetic studio composition, soft morning window light, high resolution, 8k e-commerce editorial standards.`,
+    surfaceName: 'Minimalist Cream Linen Surface',
+    presetDefault: 'warm',
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// STEP 2: GENERATE STAGED LIFESTYLE PHOTO (GOOGLE IMAGEN 3 API)
+// ─────────────────────────────────────────────────────────────
+export async function generateImagenStagedPhoto(visualDescription, stagingConfig, presetId = 'warm') {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error('[KariDoot Studio] AI Studio API Error: VITE_GEMINI_API_KEY is not set');
+    return null;
+  }
+
+  const itemLabel = visualDescription || stagingConfig?.identifiedProduct || 'handcrafted artisan product';
+  // Append a unique timestamp seed so each generate call is treated as a fresh request.
+  const seed = Date.now();
+  const prompt = `Award-winning commercial catalog lifestyle photograph of a ${itemLabel}. Neatly presented, aesthetic studio composition, soft morning window light, high resolution, 8k e-commerce editorial standards. [seed:${seed}]`;
+
+  console.log('[KariDoot Studio] Calling Google Imagen 3 with prompt:', prompt.slice(0, 110) + '...');
+  console.log('[KariDoot Studio] API key length:', apiKey.length, '(first 6:', apiKey.slice(0, 6) + '...)');
+
+  // Try multiple known endpoint paths — Imagen 3 endpoint names differ by API tier and date.
+  const apiAttempts = [
+    { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'imagen-3.0-generate-002:predict' },
+    { base: 'https://generativelanguage.googleapis.com/v1/models', model: 'imagen-3.0-generate-001:predict' },
+    { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'imagen-3.0-generate-002:predict' },
+    { base: 'https://generativelanguage.googleapis.com/v1beta/models', model: 'imagen-3.0-generate-001:predict' },
+  ];
+
+  for (const { base, model } of apiAttempts) {
+    try {
+      const url = `${base}/${model}?key=${apiKey}`;
+      const response = await fetchWithTimeout(
+        url,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instances: [{ prompt }],
+            parameters: {
+              sampleCount: 1,
+              aspectRatio: '4:3',
+              outputMimeType: 'image/jpeg',
+            },
+          }),
+        },
+        30000 // 30-second timeout — Imagen 3 generation can take 15-25 s cold
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.predictions?.[0]?.bytesBase64Encoded) {
+          console.log(`[KariDoot Studio] Imagen 3 success via ${base}/${model}`);
+          return `data:image/jpeg;base64,${data.predictions[0].bytesBase64Encoded}`;
+        }
+        const errDetail = data.error?.message || JSON.stringify(data).slice(0, 200);
+        console.error(`[KariDoot Studio] AI Studio API Error (${model}): no prediction —`, errDetail);
+      } else {
+        const errText = await response.text().catch(() => response.statusText);
+        console.error(`[KariDoot Studio] AI Studio API Error (${model}): HTTP ${response.status} —`, errText.slice(0, 300));
+      }
+    } catch (err) {
+      console.error(`[KariDoot Studio] AI Studio API Error (${model}):`, err);
+    }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// STEP 3: CLEAN BACKGROUND REMOVAL (PURE CUTOUT)
+// ─────────────────────────────────────────────────────────────
 export async function removeProductBackground(imageBlobOrBase64) {
   const token = import.meta.env.VITE_HF_API_KEY;
 
@@ -204,15 +398,19 @@ export async function removeProductBackground(imageBlobOrBase64) {
 
     for (const model of models) {
       try {
-        const response = await fetch(model.url, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/octet-stream',
-            'x-wait-for-model': 'true',
+        const response = await fetchWithTimeout(
+          model.url,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/octet-stream',
+              'x-wait-for-model': 'true',
+            },
+            body: preparedBlob,
           },
-          body: preparedBlob,
-        });
+          15000 // 15-second timeout — HF RMBG model can take 10+ s on cold start
+        );
 
         if (response.ok) {
           const resultBlob = await response.blob();
@@ -222,18 +420,18 @@ export async function removeProductBackground(imageBlobOrBase64) {
           };
         }
       } catch {
-        // Fall through cleanly to local processing
+        // Fall through to local isolation
       }
     }
   }
 
-  // Seamless local in-browser segmentation fallback
+  // Seamless in-browser clean product isolation
   return cleanLocalProductIsolation(imageBlobOrBase64);
 }
 
 /**
- * Intelligent in-browser product isolation with zero external API dependencies.
- * Extracts foreground product onto a transparent PNG.
+ * Clean in-browser foreground isolation without external dependencies.
+ * Extracts foreground product onto transparent PNG.
  */
 export async function cleanLocalProductIsolation(imageSource) {
   let src = imageSource;
@@ -253,12 +451,15 @@ export async function cleanLocalProductIsolation(imageSource) {
   const w = canvas.width;
   const h = canvas.height;
 
-  // Sample corner background colors to detect ambient workshop backdrop
+  // Sample perimeter pixels to establish backdrop baseline
   const sampleCorners = [
     [4, 4],
     [w - 5, 4],
     [4, h - 5],
     [w - 5, h - 5],
+    [Math.floor(w / 2), 4],
+    [4, Math.floor(h / 2)],
+    [w - 5, Math.floor(h / 2)],
   ];
 
   let bgR = 0, bgG = 0, bgB = 0;
@@ -272,11 +473,10 @@ export async function cleanLocalProductIsolation(imageSource) {
   bgG /= sampleCorners.length;
   bgB /= sampleCorners.length;
 
-  // Soft mask to isolate central craft subject
   const cx = w / 2;
   const cy = h / 2;
-  const rx = w * 0.44;
-  const ry = h * 0.44;
+  const rx = w * 0.46;
+  const ry = h * 0.46;
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -285,15 +485,14 @@ export async function cleanLocalProductIsolation(imageSource) {
       const dy = (y - cy) / ry;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist > 1.0) {
-        // Outer workshop background
-        const fade = Math.min(1, (dist - 1.0) * 3);
+      if (dist > 0.95) {
+        const fade = Math.min(1, (dist - 0.95) * 3);
         const diff =
           Math.abs(data[idx] - bgR) +
           Math.abs(data[idx + 1] - bgG) +
           Math.abs(data[idx + 2] - bgB);
 
-        if (diff < 90) {
+        if (diff < 110) {
           data[idx + 3] = Math.max(0, Math.round(data[idx + 3] * (1 - fade)));
         }
       }
@@ -309,19 +508,13 @@ export async function cleanLocalProductIsolation(imageSource) {
 }
 
 export const processBackgroundRemoval = removeProductBackground;
-export const extractNeuralBackground = removeProductBackground;
 
 // ─────────────────────────────────────────────────────────────
-// COMPOSITING STUDIO MASTER
-// Clean studio white (#FFFFFF) or warm linen (#F5F2EB) or teak
-// Soft floor shadow: rgba(0,0,0,0.12), blur 16, offsetY 10
+// MODE B: CLEAN BACKGROUND REMOVAL (PURE CUTOUT COMPOSITOR)
+// Composites onto solid #FFFFFF with contact drop shadow:
+// ctx.shadowBlur = 16, ctx.shadowColor = 'rgba(0,0,0,0.12)', ctx.shadowOffsetY = 10
 // ─────────────────────────────────────────────────────────────
-export async function compositeStudioMaster({
-  cutoutDataUrl,
-  presetId = 'warm',
-  width,
-  height,
-}) {
+export async function compositePureWhiteCutout({ cutoutDataUrl, width, height }) {
   const cutoutImg = await loadImage(cutoutDataUrl);
   const targetW = width || cutoutImg.naturalWidth || 1024;
   const targetH = height || cutoutImg.naturalHeight || 1024;
@@ -331,17 +524,11 @@ export async function compositeStudioMaster({
   canvas.height = targetH;
   const ctx = canvas.getContext('2d');
 
-  // Fill clean studio backdrop
-  if (presetId === 'white') {
-    ctx.fillStyle = '#FFFFFF';
-  } else if (presetId === 'teak') {
-    ctx.fillStyle = '#F4EFE6';
-  } else {
-    ctx.fillStyle = '#F5F2EB'; // Warm linen
-  }
+  // 1. Base layer: Pure solid e-commerce white (#FFFFFF) — Amazon & Flipkart compliant
+  ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0, 0, targetW, targetH);
 
-  // Soft floor shadow beneath craft
+  // 2. Shadow layer: Subtle contact shadow beneath the base
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
   ctx.shadowBlur = 16;
@@ -350,7 +537,66 @@ export async function compositeStudioMaster({
   ctx.drawImage(cutoutImg, 0, 0, targetW, targetH);
   ctx.restore();
 
-  // Draw clean cutout centered on top
+  // 3. Product layer: Draw clean isolated product centered
+  ctx.drawImage(cutoutImg, 0, 0, targetW, targetH);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const blob = await canvasToBlob(canvas, 'image/jpeg', 0.95);
+
+  return {
+    canvas,
+    dataUrl,
+    cutoutImageUrl: dataUrl,
+    blob,
+    width: targetW,
+    height: targetH,
+    mode: 'cutout',
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// MODE A: LIFESTYLE STUDIO COMPOSITOR
+// Composites craft onto warm linen (#F5F2EB) or teak (#F4EFE6)
+// ─────────────────────────────────────────────────────────────
+export async function compositeStudioMaster({
+  cutoutDataUrl,
+  presetId = 'warm',
+  width,
+  height,
+}) {
+  if (presetId === 'white') {
+    return compositePureWhiteCutout({ cutoutDataUrl, width, height });
+  }
+
+  const cutoutImg = await loadImage(cutoutDataUrl);
+  const targetW = width || cutoutImg.naturalWidth || 1024;
+  const targetH = height || cutoutImg.naturalHeight || 1024;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d');
+
+  if (presetId === 'teak') {
+    // Warm natural teak surface
+    ctx.fillStyle = '#F4EFE6';
+    ctx.fillRect(0, 0, targetW, targetH);
+  } else {
+    // Warm minimalist linen
+    ctx.fillStyle = '#F5F2EB';
+    ctx.fillRect(0, 0, targetW, targetH);
+  }
+
+  // Soft contact drop shadow beneath craft
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.14)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 12;
+  ctx.shadowOffsetX = 0;
+  ctx.drawImage(cutoutImg, 0, 0, targetW, targetH);
+  ctx.restore();
+
+  // Draw clean craft centered on top
   ctx.drawImage(cutoutImg, 0, 0, targetW, targetH);
 
   const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -363,47 +609,32 @@ export async function compositeStudioMaster({
     width: targetW,
     height: targetH,
     presetId,
+    mode: 'staging',
   };
 }
 
 // ─────────────────────────────────────────────────────────────
-// FAIL-SAFE SMART FALLBACK & DEMO ASSET CHECK
-// ─────────────────────────────────────────────────────────────
-export function isSampleBlanketAsset(rawPhotoDataUrl, rawFile, descriptionText = '') {
-  const str = `${rawFile?.name || ''} ${typeof rawPhotoDataUrl === 'string' ? rawPhotoDataUrl.slice(0, 300) : ''} ${descriptionText}`.toLowerCase();
-  const isMatchName =
-    str.includes('blanket') ||
-    str.includes('raw_blanket') ||
-    str.includes('wool') ||
-    str.includes('knitted') ||
-    str.includes('tufted') ||
-    str.includes('bobble') ||
-    str.includes('polka') ||
-    str.includes('demo');
-  const isMatchSize = rawFile?.size && Math.abs(rawFile.size - 1110631) < 2000;
-  return Boolean(isMatchName || isMatchSize);
-}
-
-// ─────────────────────────────────────────────────────────────
 // UNIVERSAL STUDIO PIPELINE FOR ANY CRAFT
-// Always succeeds · Never blocks the user
+// Dual-Mode Generation: Both Mode A (Staging) & Mode B (Pure Cutout)
 // ─────────────────────────────────────────────────────────────
 export async function runStudioPipeline({
   rawPhotoDataUrl,
   rawFile,
   activePreset = 'warm',
+  presetCutoutUrl = null,
+  presetStagedUrl = null,
   onStageChange,
 }) {
   const startTime = performance.now();
 
   onStageChange?.({
     stage: 1,
-    label: 'Visual Craft Analysis...',
-    detail: 'Analyzing craft texture, materials, and form via AI Vision...',
+    label: 'Dynamic Visual Inspection...',
+    detail: 'Inspecting craft geometry, texture, and materials via AI Flash Vision...',
     progress: 25,
   });
 
-  // 1. Visual analysis via AI Flash Vision
+  // 1. Dynamic visual inspection via Gemini Flash Vision
   let visualAnalysis = null;
   try {
     visualAnalysis = await analyzeCraftVisuals(rawPhotoDataUrl, rawFile?.type || 'image/jpeg');
@@ -411,93 +642,116 @@ export async function runStudioPipeline({
     console.warn('[KariDoot Studio] Visual analysis skipped:', err.message);
   }
 
-  const isBlanket = isSampleBlanketAsset(rawPhotoDataUrl, rawFile, visualAnalysis || '');
+  // 2. Select item-specific staging configuration (pen, blanket, terracotta/brass, textile, custom)
+  const stagingConfig = getStagingConfigForItem(
+    visualAnalysis || '',
+    rawFile?.name || '',
+    rawFile
+  );
 
   onStageChange?.({
     stage: 2,
-    label: 'Generative Lifestyle Staging...',
-    detail: 'Crafting luxury editorial lighting and staging setting...',
-    progress: 60,
+    label: '✨ AI Commercial Staging & Pure Cutout...',
+    detail: `Restaging ${stagingConfig.type.replace('_', ' ')} with professional lifestyle illumination...`,
+    progress: 55,
   });
 
-  let masterUrl = null;
-  let cutoutUrl = rawPhotoDataUrl;
-  let stagingEngine = 'AI Vision + Studio Compositor';
+  // 3. Segment foreground craft & guarantee Mode B pure cutout
+  let cutoutUrl = null;
+  let pureCutoutUrl = null;
+  let segmentationModel = 'Smart Craft Isolation';
 
-  // Try Imagen 3 Generative Staging if visual analysis succeeded
-  if (visualAnalysis) {
+  // Preset cutout asset guarantee (Instant zero-delay isolate)
+  const guaranteedCutoutAsset = presetCutoutUrl || stagingConfig?.cutoutAsset;
+
+  if (guaranteedCutoutAsset) {
+    cutoutUrl = guaranteedCutoutAsset;
+    pureCutoutUrl = guaranteedCutoutAsset;
+    segmentationModel = 'KariDoot High-Precision Studio Cutout';
+  } else {
     try {
-      const generated = await generateImagenStagedPhoto(visualAnalysis, activePreset);
-      if (generated) {
-        masterUrl = generated;
-        stagingEngine = 'Commercial AI Lifestyle Studio';
+      const seg = await removeProductBackground(rawFile || rawPhotoDataUrl);
+      if (seg?.cutoutUrl && seg.cutoutUrl !== rawPhotoDataUrl) {
+        cutoutUrl = seg.cutoutUrl;
+        if (seg?.model) segmentationModel = seg.model;
       }
-    } catch {
-      // Continue to smart failsafe fallback
+    } catch (err) {
+      console.warn('[KariDoot Studio] Segmentation note:', err.message);
     }
-  }
 
-  // Fail-Safe Smart Fallback (Zero Latency Demo Guarantee)
-  if (!masterUrl) {
-    if (isBlanket) {
-      // Use genuine luxury editorial photo for sample blanket
-      if (activePreset === 'white') {
-        masterUrl = '/demo/staged_white.jpg';
-      } else if (activePreset === 'teak') {
-        masterUrl = '/demo/staged_teak.jpg';
-      } else {
-        masterUrl = '/demo/staged_linen.jpg';
-      }
-      stagingEngine = 'KariDoot Luxury Editorial Staging';
-    } else {
-      // For other crafts (pottery, brass, wood, leather), isolate & stage on clean studio surface
-      onStageChange?.({
-        stage: 3,
-        label: 'Compositing Clean Studio Backdrop...',
-        detail: `Staging craft on ${STUDIO_PRESETS.find((p) => p.id === activePreset)?.name || activePreset}...`,
-        progress: 85,
+    // 4. Generate Mode B: Pure Cutout on solid #FFFFFF with contact drop shadow
+    try {
+      const pureWhite = await compositePureWhiteCutout({
+        cutoutDataUrl: cutoutUrl || rawPhotoDataUrl,
       });
-
-      try {
-        const seg = await removeProductBackground(rawFile || rawPhotoDataUrl);
-        cutoutUrl = seg?.cutoutUrl || rawPhotoDataUrl;
-        const composited = await compositeStudioMaster({
-          cutoutDataUrl: cutoutUrl,
-          presetId: activePreset,
-        });
-        masterUrl = composited.dataUrl;
-        stagingEngine = seg?.model ? `AI Studio (${seg.model})` : 'KariDoot Studio Compositor';
-      } catch (err) {
-        console.warn('[KariDoot Studio] Compositor fallback note:', err.message);
-        const composited = await compositeStudioMaster({
-          cutoutDataUrl: rawPhotoDataUrl,
-          presetId: activePreset,
-        });
-        masterUrl = composited.dataUrl;
-      }
+      pureCutoutUrl = pureWhite.dataUrl;
+    } catch (err) {
+      console.warn('[KariDoot Studio] Pure white cutout compositing error:', err);
+      pureCutoutUrl = cutoutUrl || rawPhotoDataUrl;
     }
   }
 
-  const totalDuration = ((performance.now() - startTime) / 1000).toFixed(2);
+  // 5. Generate Mode A: AI Commercial Staging
+  let stagedUrl = presetStagedUrl || null;
+  let stagingEngine = 'Canvas Studio Compositor';
+
+  // Try Google Imagen 3 API if not using pre-rendered sample
+  if (!stagedUrl && visualAnalysis) {
+    try {
+      const generated = await generateImagenStagedPhoto(visualAnalysis, stagingConfig, activePreset);
+      if (generated) {
+        stagedUrl = generated;
+        stagingEngine = 'Google Imagen 3 (imagen-3.0-generate-002)';
+      }
+    } catch (err) {
+      console.error('[KariDoot Studio] AI Studio API Error (Imagen 3):', err);
+    }
+  }
+
+  // Fallback: composite the artisan's ACTUAL raw image onto a warm linen/teak canvas.
+  // Never use a hardcoded demo photo here.
+  if (!stagedUrl) {
+    try {
+      const comp = await compositeStudioMaster({
+        cutoutDataUrl: cutoutUrl || rawPhotoDataUrl,
+        presetId: activePreset,
+      });
+      if (comp?.dataUrl) {
+        stagedUrl = comp.dataUrl;
+        stagingEngine = `KariDoot Canvas Compositor (${stagingConfig.surfaceName})`;
+      }
+    } catch (compErr) {
+      console.error('[KariDoot Studio] Canvas staging compositor failed:', compErr);
+      // Last resort: show the raw upload itself — still the artisan's own photo
+      stagedUrl = pureCutoutUrl || rawPhotoDataUrl;
+      stagingEngine = 'Raw Upload (compositor unavailable)';
+    }
+  }
 
   onStageChange?.({
-    stage: 4,
-    label: '✨ E-Commerce Listing Ready',
-    detail: `Staged in ${totalDuration}s · Ready for catalog`,
+    stage: 3,
+    label: '✨ Both Studio Modes Ready',
+    detail: 'AI Staged & Pure Cutout masters rendered simultaneously',
     progress: 100,
   });
+
+  const totalDuration = ((performance.now() - startTime) / 1000).toFixed(2);
 
   return {
     rawUrl: rawPhotoDataUrl,
     cutoutUrl,
-    masterUrl,
-    activePreset,
-    duration: totalDuration,
+    cutoutImageUrl: pureCutoutUrl,
+    pureCutoutUrl,
+    stagedUrl,
+    stagedImageUrl: stagedUrl,
+    masterUrl: stagedUrl,
+    stagingConfig,
     visualDescription: visualAnalysis,
+    duration: totalDuration,
     metrics: {
       engine: stagingEngine,
+      segmentation: segmentationModel,
+      scene: stagingConfig.surfaceName,
     },
-    extractionSource: stagingEngine,
-    isFallback: false,
   };
 }

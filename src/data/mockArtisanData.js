@@ -1,5 +1,5 @@
 // KariDoot AI — Mock Artisan Data for Offline/Demo Mode
-// Realistic pre-loaded handicraft data for Terracotta Pot, Channapatna Toy, Handloom Stole
+// Realistic pre-loaded handicraft data for Terracotta Pot, Channapatna Toy, Handloom Stole, Blanket
 
 export const MOCK_PRODUCTS = {
   terracottaPot: {
@@ -10,6 +10,48 @@ export const MOCK_PRODUCTS = {
       "Crafted by skilled potters of Rajasthan, this hand-thrown terracotta surai embodies centuries of Bhavani tradition. Each pot is shaped on a spinning wheel from locally sourced red clay, sun-dried for three days, then fired in a wood kiln at 900°C. The natural mineral deposits in the clay give it a unique cooling property, keeping water 8–10°C cooler than ambient temperature — a timeless desert wisdom.",
     story_local:
       "राजस्थान के कुशल कुम्हारों द्वारा निर्मित यह हस्तनिर्मित मिट्टी की सुराही भवानी परंपरा की सदियों पुरानी धरोहर को दर्शाती है। स्थानीय लाल मिट्टी से बनाई गई इस सुराही को तीन दिन धूप में सुखाया जाता है और फिर 900°C पर लकड़ी के भट्टे में पकाया जाता है।",
+    translations: {
+      hindi: {
+        title: "पारंपरिक हस्तनिर्मित मिट्टी का सुराही घड़ा",
+        story: "राजस्थान के कुशल कुम्हारों द्वारा चाक पर ढली यह हस्तनिर्मित मिट्टी की सुराही प्राकृतिक रूप से पानी को शीतल और ताज़ा रखती है।",
+      },
+      hi: {
+        title: "पारंपरिक हस्तनिर्मित मिट्टी का सुराही घड़ा",
+        story: "राजस्थान के कुशल कुम्हारों द्वारा चाक पर ढली यह हस्तनिर्मित मिट्टी की सुराही प्राकृतिक रूप से पानी को शीतल और ताज़ा रखती है।",
+      },
+      telugu: {
+        title: "చేతితో చేసిన మట్టి సురాహి కుండ",
+        story: "నైపుణ్యం కలిగిన కుమ్మరులు చక్రంపై చేతితో రూపొందించిన ఈ సహజ మట్టి కుండ నీటిని సహజ సిద్ధంగా చల్లగా మరియు రుచికరంగా ఉంచుతుంది.",
+      },
+      te: {
+        title: "చేతితో చేసిన మట్టి సురాహి కుండ",
+        story: "నైపుణ్యం కలిగిన కుమ్మరులు చక్రంపై చేతితో రూపొందించిన ఈ సహజ మట్టి కుండ నీటిని సహజ సిద్ధంగా చల్లగా మరియు రుచికరంగా ఉంచుతుంది.",
+      },
+      tamil: {
+        title: "பாரம்பரிய சுடுமண் மண்பானை",
+        story: "பாரம்பரிய குயவர்களால் சக்கரத்தின் மீது வடிவமைக்கப்பட்ட இந்த சுடுமண் குவளை, தண்ணீரை இயற்கையாகவே குளிர்ச்சியாகவும் ஆரோக்கியமாகவும் வைத்திருக்கிறது.",
+      },
+      ta: {
+        title: "பாரம்பரிய சுடுமண் மண்பானை",
+        story: "பாரம்பரிய குயவர்களால் சக்கரத்தின் மீது வடிவமைக்கப்பட்ட இந்த சுடுமண் குவளை, தண்ணீரை இயற்கையாகவே குளிர்ச்சியாகவும் ஆரோக்கியமாகவும் வைத்திருக்கிறது.",
+      },
+      bengali: {
+        title: "ঐতিহ্যবাহী মাটির সুরাহি পাত্র",
+        story: "দক্ষ কুমোরদের হাতে চাকার ওপর তৈরি এই মাটির সুরাহি জলকে স্বাভাবিকভাবেই ঠান্ডা ও স্বাস্থ্যকর রাখে।",
+      },
+      bn: {
+        title: "ঐতিহ্যবাহী মাটির সুরাহি পাত্র",
+        story: "দক্ষ কুমোরদের হাতে চাকার ওপর তৈরি এই মাটির সুরাহি জলকে স্বাভাবিকভাবেই ঠান্ডা ও স্বাস্থ্যকর রাখে।",
+      },
+      english: {
+        title: "Hand-Thrown Terracotta Clay Water Pot",
+        story: "Shaped by hand on traditional potter's wheels from nutrient-rich alluvial red clay and kiln-fired, this terracotta pot cools water naturally through desert evaporative wisdom.",
+      },
+      en: {
+        title: "Hand-Thrown Terracotta Clay Water Pot",
+        story: "Shaped by hand on traditional potter's wheels from nutrient-rich alluvial red clay and kiln-fired, this terracotta pot cools water naturally through desert evaporative wisdom.",
+      },
+    },
     specifications: [
       { label: "Material", label_local: "सामग्री", value: "Red Alluvial Clay, Natural Mineral Glaze", icon: "layers" },
       { label: "Dimensions", label_local: "आकार", value: "Height 28cm × Diameter 18cm, Capacity 2L", icon: "maximize-2" },
@@ -41,6 +83,48 @@ export const MOCK_PRODUCTS = {
       "The Channapatna toy tradition, known as 'Gombe Ramanagara', dates back to the reign of Tipu Sultan who brought Persian craftsmen to Karnataka in the 18th century. These spinning tops are hand-turned on traditional lathes from soft Ivory Wood (Hale Mara), then lacquered with plant-based dyes — non-toxic and BIS-certified safe for children. Each toy carries the GI Tag of Karnataka.",
     story_local:
       "ಚನ್ನಪಟ್ಟಣದ ಬೊಂಬೆ ಪರಂಪರೆ, 'ಗೊಂಬೆ ರಾಮನಗರ' ಎಂದು ಕರೆಯಲ್ಪಡುತ್ತದೆ, ಇದು 18ನೇ ಶತಮಾನದಲ್ಲಿ ಟಿಪ್ಪು ಸುಲ್ತಾನ್ ಕಾಲದಿಂದ ಬಂದಿದೆ. ಸಾಂಪ್ರದಾಯಿಕ ಮರಗೆಲಸದ ಮೂಲಕ ತಯಾರಿಸಿದ ಈ ಲಾಟು ಸಸ್ಯ-ಆಧಾರಿತ ಬಣ್ಣಗಳಿಂದ ಲ್ಯಾಕರ್ ಮಾಡಲಾಗಿದೆ.",
+    translations: {
+      hindi: {
+        title: "चन्नपटना हस्तनिर्मित लकड़ी का खिलौना",
+        story: "कुशल कारीगरों द्वारा पारंपरिक खराद पर आइवरी वुड से तराशा गया यह खिलौना प्राकृतिक वनस्पति रंगों से रंगा गया है, जो बच्चों के लिए पूर्णतः सुरक्षित है।",
+      },
+      hi: {
+        title: "चन्नपटना हस्तनिर्मित लकड़ी का खिलौना",
+        story: "कुशल कारीगरों द्वारा पारंपरिक खराद पर आइवरी वुड से तराशा गया यह खिलौना प्राकृतिक वनस्पति रंगों से रंगा गया है, जो बच्चों के लिए पूर्णतः सुरक्षित है।",
+      },
+      telugu: {
+        title: "చన్నపట్న చేతితో చేసిన చెక్క బొమ్మ",
+        story: "సాంప్రదాయ చెక్క పనితనంతో ఐవరీ వుడ్‌పై సహజ రంగులతో రూపొందించిన ఈ బొమ్మ పిల్లలకు ఎంతో సురక్షితమైనది.",
+      },
+      te: {
+        title: "చన్నపట్న చేతితో చేసిన చెక్క బొమ్మ",
+        story: "సాంప్రదాయ చెక్క పనితనంతో ఐవరీ వుడ్‌పై సహజ రంగులతో రూపొందించిన ఈ బొమ్మ పిల్లలకు ఎంతో సురక్షితమైనది.",
+      },
+      tamil: {
+        title: "சன்னபட்டணா பாரம்பரிய மர பொம்மை",
+        story: "பாரம்பரிய முறையில் மரத்தால் செய்யப்பட்டு இயற்கை வண்ணங்களால் பூசப்பட்ட இந்த பொம்மை குழந்தைகளுக்கு மிகவும் பாதுகாப்பானது.",
+      },
+      ta: {
+        title: "சன்னபட்டணா பாரம்பரிய மர பொம்மை",
+        story: "பாரம்பரிய முறையில் மரத்தால் செய்யப்பட்டு இயற்கை வண்ணங்களால் பூசப்பட்ட இந்த பொம்மை குழந்தைகளுக்கு மிகவும் பாதுகாப்பானது.",
+      },
+      bengali: {
+        title: "চন্নাপাটনা ঐতিহ্যবাহী কাঠের খেলনা",
+        story: "ঐতিহ্যবাহী কাঠের ওপর প্রাকৃতিক ভেষজ রঙ দিয়ে তৈরি এই খেলনা শিশুদের জন্য সম্পূর্ণ নিরাপদ।",
+      },
+      bn: {
+        title: "চন্নাপাটনা ঐতিহ্যবাহী কাঠের খেলনা",
+        story: "ঐতিহ্যবাহী কাঠের ওপর প্রাকৃতিক ভেষজ রঙ দিয়ে তৈরি এই খেলনা শিশুদের জন্য সম্পূর্ণ নিরাপদ।",
+      },
+      english: {
+        title: "Channapatna Wooden Spinning Top",
+        story: "Hand-turned on traditional lathes from soft Ivory Wood and lacquered with plant-based vegetable dyes, non-toxic and BIS-certified safe.",
+      },
+      en: {
+        title: "Channapatna Wooden Spinning Top",
+        story: "Hand-turned on traditional lathes from soft Ivory Wood and lacquered with plant-based vegetable dyes, non-toxic and BIS-certified safe.",
+      },
+    },
     specifications: [
       { label: "Material", label_local: "ಸಾಮಗ್ರಿ", value: "Ivory Wood (Wrightia tinctoria), Plant-Based Lacquer", icon: "layers" },
       { label: "Dimensions", label_local: "ಗಾತ್ರ", value: "Height 6cm × Diameter 5cm, Weight 45g", icon: "maximize-2" },
@@ -71,7 +155,49 @@ export const MOCK_PRODUCTS = {
     story_en:
       "Woven by the women weavers of Murshidabad, West Bengal, this Kantha stole embodies the 'running stitch' tradition passed down through generations of Bengali artisans. Pure Murshidabad silk threads are handwoven on pit looms, then embroidered with the iconic Kantha motifs — lotus, peacock, and paisley — using natural indigo and madder dyes. Each stole takes 4–6 days to complete.",
     story_local:
-      "মুর্শিদাবাদের মহিলা তাঁতিদের দ্বারা বোনা এই কাঁথার শাল বাংলার ঐতিহ্যবাহী 'রানিং স্টিচ' শিল্পকলার প্রতীক। বিশুদ্ধ মুর্শিদাবাদ রেশমের সুতো দিয়ে গর্তের তাঁতে হাতে বোনা এবং প্রাকৃতিক নীল ও মজ্ঞিষ্ঠা রঞ্জক দিয়ে সূচিকর্ম করা।",
+      "মুর্শিদাবাদের মহিলা তাঁতিদের দ্বারা বোনা এই কাঁথার শাল বাংলার ঐতিহ্যবাহী 'রানিং স্টিচ' শিল্পকলার প্রতীক। বিশুদ্ধ মুর্শিদাবাদ রেশমের সুতো দিয়ে গর্তের তাঁতে হাতে বোনা এবং প্রাকৃতিক নীল ও মঞ্জিষ্ঠা রঞ্জক দিয়ে সূচিকর্ম করা।",
+    translations: {
+      hindi: {
+        title: "हस्तनिर्मित कांथा कढ़ाई रेशमी शॉल",
+        story: "पश्चिम बंगाल के मुर्शिदाबाद के महिला बुनकरों द्वारा शुद्ध रेशम पर पारंपरिक कांथा रनिंग स्टिच से तैयार की गई यह शॉल सांस्कृतिक भव्यता की मिसाल है।",
+      },
+      hi: {
+        title: "हस्तनिर्मित कांथा कढ़ाई रेशमी शॉल",
+        story: "पश्चिम बंगाल के मुर्शिदाबाद के महिला बुनकरों द्वारा शुद्ध रेशम पर पारंपरिक कांथा रनिंग स्टिच से तैयार की गई यह शॉल सांस्कृतिक भव्यता की मिसाल है।",
+      },
+      telugu: {
+        title: "చేతితో నేసిన కాంథా ఎంబ్రాయిడరీ పట్టు శాలువా",
+        story: "పశ్చిమ బెంగాల్ మహిళా కళాకారులు స్వచ్ఛమైన ముర్షిదాబాద్ పట్టుపై సంప్రదాయ కాంథా కుట్టుతో నేసిన విశిష్ట శాలువా ఇది.",
+      },
+      te: {
+        title: "చేతితో నేసిన కాంథా ఎంబ్రాయిడరీ పట్టు శాలువా",
+        story: "పశ్చిమ బెంగాల్ మహిళా కళాకారులు స్వచ్ఛమైన ముర్షిదాబాద్ పట్టుపై సంప్రదాయ కాంథా కుట్టుతో నేసిన విశిష్ట శాలువా ఇది.",
+      },
+      tamil: {
+        title: "பாரம்பரிய காந்தா எம்பிராய்டரி பட்டு சால்வை",
+        story: "மேற்கு வங்க கைவினை கலைஞர்களால் தூய பட்டில் பாரம்பர்ய காந்தா தையல் கொண்டு உருவாக்கப்பட்ட நேர்த்தியான சால்வை.",
+      },
+      ta: {
+        title: "பாரம்பரிய காந்தா எம்பிராய்டரி பட்டு சால்வை",
+        story: "மேற்கு வங்க கைவினை கலைஞர்களால் தூய பட்டில் பாரம்பர்ய காந்தா தையல் கொண்டு உருவாக்கப்பட்ட நேர்த்தியான சால்வை.",
+      },
+      bengali: {
+        title: "হাতে বোনা কাঁথা রেশমের শাল",
+        story: "মুর্শিদাবাদের মহিলা তাঁতিদের দ্বারা বোনা এই কাঁথার শাল বাংলার ঐতিহ্যবাহী 'রানিং স্টিচ' শিল্পকলার প্রতীক।",
+      },
+      bn: {
+        title: "হাতে বোনা কাঁথা রেশমের শাল",
+        story: "মুর্শিদাবাদের মহিলা তাঁতিদের দ্বারা বোনা এই কাঁথার শাল বাংলার ঐতিহ্যবাহী 'রানিং স্টিচ' শিল্পকলার প্রতীক।",
+      },
+      english: {
+        title: "Handloom Kantha Embroidery Silk Stole",
+        story: "Woven by women artisans of Murshidabad on pit looms with pure silk threads and embroidered with traditional Kantha running stitches.",
+      },
+      en: {
+        title: "Handloom Kantha Embroidery Silk Stole",
+        story: "Woven by women artisans of Murshidabad on pit looms with pure silk threads and embroidered with traditional Kantha running stitches.",
+      },
+    },
     specifications: [
       { label: "Material", label_local: "উপাদান", value: "100% Pure Murshidabad Silk, Natural Dyes", icon: "layers" },
       { label: "Dimensions", label_local: "মাপ", value: "200cm × 60cm, Weight 180g", icon: "maximize-2" },
@@ -94,9 +220,83 @@ export const MOCK_PRODUCTS = {
     ondc_tags: ["kantha stole", "handloom silk", "murshidabad weave", "natural dye dupatta", "GI bengal craft"],
     artisanId: "artisan-westbengal-003",
   },
+
+  blanket: {
+    title_en: "Handwoven Traditional Artisan Heritage Blanket",
+    title_local: "पारंपरिक हथकरघा कारीगर विरासत कंबल",
+    craft_category: "Handloom & Textiles",
+    story_en:
+      "Woven with generational mastery by our traditional master weavers, this authentic handloom heritage blanket offers unmatched warmth, tactile comfort, and organic luxury. Spun from pure natural fibers, it stands as a living celebration of authentic Indian artisanal excellence.",
+    story_local:
+      "हमारे पारंपरिक बुनकरों द्वारा पीढ़ियों की विरासत और कौशल से बुना गया यह प्रामाणिक हथकरघा कंबल अद्वितीय आराम और गर्मी प्रदान करता है। प्राकृतिक धागों से तैयार, यह उत्पाद भारतीय शिल्प कौशल का जीवंत उदाहरण है।",
+    translations: {
+      hindi: {
+        title: "पारंपरिक हथकरघा कारीगर विरासत कंबल",
+        story: "हमारे पारंपरिक बुनकरों द्वारा पीढ़ियों की विरासत और कौशल से बुना गया यह प्रामाणिक हथकरघा कंबल अद्वितीय आराम और गर्मी प्रदान करता है। प्राकृतिक धागों से तैयार, यह उत्पाद भारतीय शिल्प कौशल का जीवंत उदाहरण है।",
+      },
+      hi: {
+        title: "पारंपरिक हथकरघा कारीगर विरासत कंबल",
+        story: "हमारे पारंपरिक बुनकरों द्वारा पीढ़ियों की विरासत और कौशल से बुना गया यह प्रामाणिक हथकरघा कंबल अद्वितीय आराम और गर्मी प्रदान करता है। प्राकृतिक धागों से तैयार, यह उत्पाद भारतीय शिल्प कौशल का जीवंत उदाहरण है।",
+      },
+      telugu: {
+        title: "చేనేత పారంపర్య హస్తకళా దుప్పటి",
+        story: "మన సాంప్రదాయ చేనేత కార్మికులు ఎంతో నైపుణ్యంతో నేసిన అద్భుతమైన పారంపర్య దుప్పటి ఇది. సహజ దారాలతో తయారు చేయబడిన ఈ ఉత్పత్తి భారతీయ హస్తకళా వైభవానికి నిదర్శనం.",
+      },
+      te: {
+        title: "చేనేత పారంపర్య హస్తకళా దుప్పటి",
+        story: "మన సాంప్రదాయ చేనేత కార్మికులు ఎంతో నైపుణ్యంతో నేసిన అద్భుతమైన పారంపర్య దుప్పటి ఇది. సహజ దారాలతో తయారు చేయబడిన ఈ ఉత్పత్తి భారతీయ హస్తకళా వైభవానికి నిదర్శనం.",
+      },
+      tamil: {
+        title: "பாரம்பரிய கைத்தறி கைவினைப் போர்வை",
+        story: "எங்கள் பாரம்பரிய நெசவாளர்களால் தலைமுறை தலைமுறையாக வந்த கைவினைத் திறனோடு நெய்யப்பட்ட இந்த உண்மையான கைத்தறி போர்வை இணையற்ற கதகதப்பையும் ஆறுதலையும் தருகிறது. இயற்கை நூல்களால் உருவாக்கப்பட்ட இது இந்திய கைவினை பாரம்பரியத்தின் சிறந்த அடையாளம்.",
+      },
+      ta: {
+        title: "பாரம்பரிய கைத்தறி கைவினைப் போர்வை",
+        story: "எங்கள் பாரம்பரிய நெசவாளர்களால் தலைமுறை தலைமுறையாக வந்த கைவினைத் திறனோடு நெய்யப்பட்ட இந்த உண்மையான கைத்தறி போர்வை இணையற்ற கதகதப்பையும் ஆறுதலையும் தருகிறது. இயற்கை நூல்களால் உருவாக்கப்பட்ட இது இந்திய கைவினை பாரம்பரியத்தின் சிறந்த அடையாளம்.",
+      },
+      bengali: {
+        title: "ঐতিহ্যবাহী তাঁতের হস্তশিল্প কম্বল",
+        story: "আমাদের ঐতিহ্যবাহী তাঁতিদের দ্বারা প্রজন্মের পর প্রজন্ম ধরে চলে আসা দক্ষতায় বোনা এই খাঁটি তাঁতের কম্বল অতুলনীয় আরাম ও উষ্ণতা প্রদান করে। প্রাকৃতিক সুতো দিয়ে তৈরি এই পণ্যটি भारतीय হস্তশিল্পের এক অনন্য নিদর্শন।",
+      },
+      bn: {
+        title: "ঐতিহ্যবাহী তাঁতের হস্তশিল্প কম্বল",
+        story: "আমাদের ঐতিহ্যবাহী তাঁতিদের দ্বারা প্রজন্মের পর প্রজন্ম ধরে চলে আসা দক্ষতায় বোনা এই খাঁটি তাঁতের কম্বল অতুলনীয় আরাম ও উষ্ণতা প্রদান করে। প্রাকৃতিক সুতো দিয়ে তৈরি এই পণ্যটি ভারতীয় হস্তশিল্পের এক অনন্য নিদর্শন।",
+      },
+      english: {
+        title: "Handwoven Traditional Artisan Heritage Blanket",
+        story: "Woven with generational mastery by our traditional master weavers, this authentic handloom heritage blanket offers unmatched warmth, tactile comfort, and organic luxury. Spun from pure natural fibers, it stands as a living celebration of authentic Indian artisanal excellence.",
+      },
+      en: {
+        title: "Handwoven Traditional Artisan Heritage Blanket",
+        story: "Woven with generational mastery by our traditional master weavers, this authentic handloom heritage blanket offers unmatched warmth, tactile comfort, and organic luxury. Spun from pure natural fibers, it stands as a living celebration of authentic Indian artisanal excellence.",
+      },
+    },
+    specifications: [
+      { label: "Material", label_local: "सामग्री", value: "Organic Mountain Wool & Hand-Spun Cotton", icon: "layers" },
+      { label: "Dimensions", label_local: "आकार", value: "60 × 90 inches, Weight 1.4kg", icon: "maximize-2" },
+      { label: "Technique", label_local: "तकनीक", value: "Pitloom Manual Weaving with Hand-Knotted Selvedge", icon: "settings" },
+      { label: "Care", label_local: "देखभाल", value: "Gentle cold hand wash with wool detergent. Dry flat.", icon: "shield" },
+    ],
+    cost_breakdown: {
+      material_cost: 800,
+      labour_cost: 600,
+      packaging_cost: 50,
+      logistics_cost: 150,
+    },
+    market_benchmarks: {
+      amazon_avg: 2200,
+      flipkart_avg: 1950,
+      etsy_avg: 2800,
+      grounded_market_price: 2400,
+      market_verdict: "High Demand",
+      advice: "Direct handloom wool commands premium pricing on Etsy and Amazon Karigar.",
+    },
+    ondc_tags: ["wool blanket", "handloom heritage", "authentic artisan", "organic throw"],
+    artisanId: "artisan-westbengal-003",
+  },
 };
 
-export const DEFAULT_MOCK = MOCK_PRODUCTS.terracottaPot;
+export const DEFAULT_MOCK = MOCK_PRODUCTS.blanket;
 
 export const ARTISAN_PROFILES = {
   "artisan-rajasthan-001": {

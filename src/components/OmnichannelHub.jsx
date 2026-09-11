@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, Share2, ExternalLink, Copy, Check, Printer, X, Globe, Zap } from 'lucide-react';
+import { Download, ExternalLink, Copy, Check, Printer, X, Globe } from 'lucide-react';
 import {
   generateOndcBecknJson,
   generateEcommerceCsv,

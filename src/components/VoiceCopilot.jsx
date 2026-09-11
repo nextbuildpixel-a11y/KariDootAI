@@ -2,7 +2,7 @@
 // Persistent floating pill with waveform, step progress, dialect switcher
 
 import { useEffect, useState, useRef } from 'react';
-import { Volume2, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { speakInstruction, stopSpeaking } from '../services/voiceService';
 
 const STEP_LABELS = {
@@ -32,12 +32,11 @@ export default function VoiceCopilot({ step, dialect, enabled }) {
   };
 
   useEffect(() => {
-    triggerSpeak();
     return () => {
       clearTimeout(collapseTimer.current);
       stopSpeaking();
     };
-  }, [step, dialect, enabled]);
+  }, []);
 
   const stepLabel = STEP_LABELS[step] || STEP_LABELS[1];
 
